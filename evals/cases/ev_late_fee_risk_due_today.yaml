@@ -1,0 +1,10 @@
+name: 'due on as_of itself: not 1 to 14 days ahead'
+mailbox: evals/mailboxes/late_fee_risk
+as_of: '2036-06-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01013
+    class: late_fee_risk
+  verdict: no_finding
+why: due - as_of = 0, and the window starts at 1

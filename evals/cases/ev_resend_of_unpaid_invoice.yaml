@@ -1,0 +1,10 @@
+name: the same document sent again as a reminder while it is unpaid
+mailbox: evals/mailboxes/reminder_unpaid
+as_of: '2036-07-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01702
+    class: duplicate
+  verdict: no_finding
+why: a resend is a duplicate only when the ledger shows the first copy paid or scheduled

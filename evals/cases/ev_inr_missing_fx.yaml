@@ -1,0 +1,12 @@
+name: an INR overcharge dated after the last exchange-rate row
+mailbox: evals/mailboxes/inr_missing_fx
+as_of: '2036-09-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-IN-36-0044
+    class: overcharge
+  verdict: cannot_determine
+  missing_doc: Schedule E update
+  action: draft:request_document
+why: the DG fee is not owed, but its USD amount needs the August 2036 rate, which Treasury has not issued

@@ -1,0 +1,14 @@
+name: a person approves one month of an unauthorised waiver
+mailbox: evals/mailboxes/feedback_one_off
+as_of: '2036-05-31'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/ev_one_off.json
+expect:
+  key:
+    invoice_id: VLA-ST-3603
+    class: waived_but_billed
+  verdict: finding
+  amount_usd: '350.00'
+  action: draft:dispute
+why: one_off_approval covers this key, for March (learned_at)

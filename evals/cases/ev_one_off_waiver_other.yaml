@@ -1,0 +1,10 @@
+name: a one-off waiver does not reach the next consignment
+mailbox: evals/mailboxes/one_off_waiver
+as_of: '2036-05-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00731
+    class: waived_but_billed
+  verdict: no_finding
+why: 'clause 6.2: a waiver covers only what it names; treating it as standing is a hard-gate mistake'

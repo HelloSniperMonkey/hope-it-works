@@ -1,0 +1,14 @@
+name: amendment and authorised tariff notice disagree; billed above both
+mailbox: evals/mailboxes/conflict_above_both
+as_of: '2036-05-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00502
+    class: overcharge
+  verdict: conflict
+  amount_range:
+  - '28.62'
+  - '44.03'
+  action: escalate
+why: clause 7.2 ranks neither; the range runs from billed minus the higher answer to billed minus the lower

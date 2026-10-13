@@ -1,0 +1,12 @@
+name: 'a one-off waiver: the named waybill'
+mailbox: evals/mailboxes/one_off_waiver
+as_of: '2036-05-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00700
+    class: waived_but_billed
+  verdict: finding
+  amount_usd: '98.40'
+  action: draft:dispute
+why: the waiver names this waybill

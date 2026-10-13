@@ -1,0 +1,11 @@
+name: 'auto-renewing contract: the non-renewal notice deadline is the date'
+mailbox: evals/mailboxes/expiry_autorenew
+as_of: '2036-08-20'
+mode: supervised
+expect:
+  key:
+    contract_id: VLA-US-AIR-07
+  verdict: finding
+  deadline: '2036-10-06'
+  action: internal:alert
+why: 47 days to the notice deadline; the end date itself is 137 days away

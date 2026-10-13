@@ -1,0 +1,12 @@
+name: six storage days billed; 16 - 10 - 3 free = 3 owed
+mailbox: evals/mailboxes/storage_delivery
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01310
+    class: overcharge
+  verdict: finding
+  amount_usd: '94.50'
+  action: draft:dispute
+why: 'clause 3.8: release day not charged, 3 free days'

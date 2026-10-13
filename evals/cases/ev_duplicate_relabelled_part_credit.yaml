@@ -1,0 +1,12 @@
+name: security billed again under another label, partly credited
+mailbox: evals/mailboxes/duplicate_credit
+as_of: '2036-05-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01688
+    class: duplicate
+  verdict: finding
+  amount_usd: '19.96'
+  action: draft:dispute
+why: same waybill and charge code (Schedule D maps Screening to SEC); overlap minus the partial credit

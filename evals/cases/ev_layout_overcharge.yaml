@@ -1,0 +1,12 @@
+name: 'new layout: period B tariff billed for a period A collection'
+mailbox: evals/mailboxes/layout
+as_of: '2036-03-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00417
+    class: overcharge
+  verdict: finding
+  amount_usd: '31.18'
+  action: draft:dispute
+why: 5.30 is the period B rate; collected 04.02.2036 is period A (5.18), and the fuel rides on the freight

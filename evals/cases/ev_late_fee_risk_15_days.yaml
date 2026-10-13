@@ -1,0 +1,10 @@
+name: 'due 15 days after as_of: outside the window'
+mailbox: evals/mailboxes/late_fee_risk
+as_of: '2036-06-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01012
+    class: late_fee_risk
+  verdict: no_finding
+why: 15 > 14

@@ -1,0 +1,12 @@
+name: a waiver we only see quoted in the customer's own forward
+mailbox: evals/mailboxes/quoted_waiver
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00611
+    class: waived_but_billed
+  verdict: cannot_determine
+  missing_doc: email Prisca Odunsi
+  action: draft:request_document
+why: quoted text has no authority on its own; the original email decides it and we don't hold it

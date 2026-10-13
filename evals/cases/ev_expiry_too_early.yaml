@@ -1,0 +1,9 @@
+name: the same contract, 61+ days before the notice deadline
+mailbox: evals/mailboxes/expiry_autorenew
+as_of: '2036-08-05'
+mode: supervised
+expect:
+  key:
+    contract_id: VLA-US-AIR-07
+  verdict: no_finding
+why: 2036-10-06 - 2036-08-05 = 62 days

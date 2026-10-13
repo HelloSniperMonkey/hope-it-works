@@ -1,0 +1,12 @@
+name: delivery fee on a consignment the consignee collected
+mailbox: evals/mailboxes/storage_delivery
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01422
+    class: overcharge
+  verdict: finding
+  amount_usd: '98.40'
+  action: draft:dispute
+why: 'clause 3.9: the fee applies only when Velloran delivers'

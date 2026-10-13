@@ -1,0 +1,44 @@
+{
+ "schema_version": "1.0",
+ "world": "EVAL",
+ "after_batch": "batch_01",
+ "decided_at": "2036-05-20T09:00:00Z",
+ "decided_by": {
+  "name": "Quentin Abara",
+  "role": "Head of Payables",
+  "entity": "BWB-US"
+ },
+ "items": [
+  {
+   "item_id": "fb-ev-01",
+   "finding_key": {
+    "invoice_id": "VLA-ST-3603",
+    "class": "waived_but_billed"
+   },
+   "solicited": false,
+   "decision": "one_off_approval",
+   "fact": {
+    "type": "waiver_scope",
+    "subject": {
+     "person": "Rufus Okonkwo",
+     "party": "VLA-US"
+    },
+    "value": {
+     "months": [
+      "2036-03"
+     ]
+    },
+    "evidence": "Velloran confirmed March by phone"
+   },
+   "scope": {
+    "kind": "one_off",
+    "applies_to": {
+     "invoice_id": "VLA-ST-3603"
+    },
+    "valid_from": "2036-05-20",
+    "valid_to": null
+   },
+   "note": "Honour Rufus's waiver for March only."
+  }
+ ]
+}

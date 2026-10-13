@@ -1,0 +1,12 @@
+name: a clean overcharge of $5,000 or more is held for a person, even unattended
+mailbox: evals/mailboxes/autonomous_threshold
+as_of: '2036-05-15'
+mode: autonomous
+expect:
+  key:
+    invoice_id: VLA-36-01850
+    class: overcharge
+  verdict: finding
+  amount_usd: '5870.40'
+  action: human_review
+why: the unattended-action test needs the invoice's outbound total under 5,000.00

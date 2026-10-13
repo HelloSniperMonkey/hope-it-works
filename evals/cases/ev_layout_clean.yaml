@@ -1,0 +1,10 @@
+name: 'new layout: 49.5 kg sits in the 0 to 49.5 kg step'
+mailbox: evals/mailboxes/layout
+as_of: '2036-03-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00418
+    class: overcharge
+  verdict: no_finding
+why: the boundary weight belongs to the lower step; billed rate equals the tariff

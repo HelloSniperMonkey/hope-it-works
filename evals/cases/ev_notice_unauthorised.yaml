@@ -1,0 +1,12 @@
+name: 'tariff notice from the Account Director (notices only): the amendment decides'
+mailbox: evals/mailboxes/notice_unauthorised
+as_of: '2036-05-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00502
+    class: overcharge
+  verdict: finding
+  amount_usd: '44.03'
+  action: draft:dispute
+why: only the rates signatory can issue a tariff notice, so there is nothing to weigh against the amendment

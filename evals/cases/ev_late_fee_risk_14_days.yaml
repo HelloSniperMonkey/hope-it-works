@@ -1,0 +1,13 @@
+name: 'due exactly 14 days after as_of: one month''s arrears charge at risk'
+mailbox: evals/mailboxes/late_fee_risk
+as_of: '2036-06-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-01011
+    class: late_fee_risk
+  verdict: finding
+  amount_usd: '40.43'
+  deadline: '2036-06-29'
+  action: internal:payment_reminder
+why: 0 < 14 <= 14

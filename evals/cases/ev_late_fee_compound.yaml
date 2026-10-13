@@ -1,0 +1,12 @@
+name: '37 days late: two compounding months owed, three simple months billed'
+mailbox: evals/mailboxes/late_fee_compound
+as_of: '2036-07-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-00977
+    class: late_fee_not_owed
+  verdict: finding
+  amount_usd: '64.91'
+  action: draft:dispute
+why: 'ceil(37/30) = 2 months at 1.65%, the second on principal plus the first: 133.09 owed'
