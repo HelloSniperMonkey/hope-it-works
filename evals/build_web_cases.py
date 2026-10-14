@@ -80,8 +80,11 @@ def contract(rate="2.50", fees=(), percent=True, fuel_base=("FRT",), tariff_unit
                                  "email": "rates@aurora.example", "src": "1:14"}] + persons,
          "clauses": {"pricing_date": {"text_src": "1:5"}, "storage": {"free_days": 3, "src": "1:11"},
                      "qualifying_spend": {"include_codes": ["FRT", "FUEL"], "include_annex_d": True, "src": "1:15"}}}
-    if late_fee:
-        f["clauses"]["late_fee"] = dict(late_fee)
+    if late_fee:                            # printed, so a live reader can find what the golden facts say
+        lines.append(f"Late payment: {late_fee['percent_per_month']}% per month on overdue amounts after "
+                     f"{late_fee['grace_days']} days' grace; a month is {late_fee['days_per_month']} days; "
+                     f"{'compound' if late_fee['compounding'] else 'simple'} interest.")
+        f["clauses"]["late_fee"] = {**late_fee, "src": f"1:{len(lines)}"}
     for cc in f["charge_codes"]:
         if cc["code"] == "TAX":
             cc["aliases"] = list(tax_aliases)
@@ -121,6 +124,8 @@ class Fixture:
 
     def add(self, name, pages, kind, facts, *, fmt="pdf", scan=False, misclassified=False, rendered=None,
             sender=None, when=None):
+        if pages and isinstance(pages[0], str):
+            pages = [pages]                 # a flat list of lines is one page, not one page per line
         if fmt == "xlsx":
             blob = xlsx(pages, money="0.00")
         else:
@@ -480,7 +485,7 @@ def main():
     hy = header(f.no, "336.00") + ["AF-100 Transportation 100 kg x 2.80 = 280.00",
                                    "AF-100 Fuel surcharge 20% = 56.00",
                                    "Factur-X: machine-readable XML embedded (PDF/A-3)"]
-    with pymupdf.open(stream=pdf(hy), filetype="pdf") as doc:
+    with pymupdf.open(stream=pdf([hy]), filetype="pdf") as doc:
         doc.embfile_add("factur-x.xml", b"<CrossIndustryInvoice><!-- fictional fixture payload -->"
                                          b"</CrossIndustryInvoice>")
         hybrid = doc.tobytes()

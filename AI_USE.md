@@ -12,6 +12,8 @@ A second research pass inspected the Peppol BIS Billing 3.0 rules, the FedEx EDI
 
 After the first GitHub Actions run failed, OpenCode inspected its logs with GitHub CLI and reproduced the empty-key authentication failure locally using an SDK mock transport. Push CI had attempted a live practice grade with no `ANTHROPIC_API_KEY` secret and no development extraction cache. The workflow was split into automatic offline verification and manually requested live grading with a credential preflight. This also corrected an inaccurate earlier claim in SOLUTION.md: `make eval` needs a key on a cold checkout; only the rule tests, golden-reader corpus and artifact validation are self-contained offline checks.
 
+In a later Claude Code session, the source-backed layouts were read for real by Workflow subagents (Claude Haiku for emails, Claude Sonnet at low/medium effort for attachments; 128 agents in all) because the API proxy answered every direct request with 429 and `claude -p` timed out. That run found two broken fixture generators and three engine gaps, all fixed and recorded in SOLUTION.md.
+
 ## How you worked with them
 
 The order of work was: read the brief, glossary, grader and every worked example; plan; build the reader and rules; then run the practice card, the exam sheet and my own cases. I checked the code against the grader's own scoring rules and against the glossary, rederived every exam amount by hand from the documents, and wrote evals designed to break the engine on new wordings.

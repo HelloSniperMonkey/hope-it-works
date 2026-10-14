@@ -173,7 +173,7 @@
    "requests_payment": "yes"
   }
  },
- "82cbff27af7f31d663671184": {
+ "ff61a56b9adb06d1840eaa54": {
   "kind": "invoice",
   "facts": {
    "invoice_number": "AF-PEP",
@@ -258,7 +258,7 @@
    "requests_payment": "yes"
   }
  },
- "fdf17b0657e4c4c19ff732dc": {
+ "fc63f9ad3773e006b613784f": {
   "kind": "credit_note",
   "facts": {
    "number": "CN-PEP",

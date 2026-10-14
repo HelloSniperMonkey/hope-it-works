@@ -196,6 +196,10 @@ class Contract:
     def clause(self, name: str) -> dict:
         return self.cl.get(name) or {}
 
+    def lane_of(self, raw) -> str:
+        """A line's lane; an invoice that prints none is on the contract's only lane, if it has just one."""
+        return norm_lane(raw) or (next(iter(self.rates)) if len(self.rates) == 1 else "")
+
     def code_of(self, label: str) -> str | None:
         return code_from(self.codes, label)
 
@@ -244,11 +248,22 @@ def code_from(codes: dict[str, str], label: str) -> str | None:
     lab = norm_label(label)
     if lab in codes:
         return codes[lab]
-    best = None
-    for alias, code in codes.items():
-        if alias and (lab.startswith(alias + " ") or lab == alias) and (best is None or len(alias) > len(best[0])):
-            best = (alias, code)
-    return best[1] if best else None
+    for fits in (lambda a: lab.startswith(a + " "), lambda a: lab.endswith(" " + a)):    # "Airport screening"
+        best = max((a for a in codes if a and fits(a)), key=len, default=None)
+        if best:
+            return codes[best]
+    return None
+
+
+def split_awb(ln: dict, known: set) -> None:
+    """A line that printed its waybill inside the label ("AF-100 Transportation"): take it out, if the mailbox knows
+    that waybill from tracking or an air waybill. An unknown leading token is left as part of the label."""
+    if ln.get("awb"):
+        return
+    m = re.match(r"\s*(?:(?:h|m)?awb|waybill|consignment|shipment)?\s*(?:no\.?|#)?\s*(\S+?)\s*[/:]?\s+(\S.*)",
+                 str(ln.get("description") or ""), re.I)
+    if m and norm_awb(m.group(1)) in known:
+        ln["awb"], ln["description"] = m.group(1), m.group(2)
 
 
 class World:
@@ -287,6 +302,10 @@ class World:
                 if d["kind"] == "unreadable" or d.get("facts") is None:
                     self.unreadable.append(d["ref"])
                 self._add(d["kind"], d.get("facts") or {}, d["ref"], meta, rec_day, email_facts, d.get("pages"))
+        known = set(self.events) | set(self.awbs)
+        for ln in [ln for cps in self.invoices.values() for cp in cps for ln in cp["f"].get("lines") or []] + \
+                  [ln for cn in self.credit_notes for ln in cn.get("lines") or []]:
+            split_awb(ln, known)
 
     def _add(self, kind, f, ref, meta, rec, email_facts, pages=None):
         ctx = {"ref": ref, "meta": meta, "received": rec, "pages": pages}
@@ -749,7 +768,7 @@ def overcharges(w: World, out: list[dict]):
             pickup, psrc, pev = w.pickup(awb, first, ref, c)
             if pickup is None:
                 continue
-            lane = norm_lane(first.get("lane"))
+            lane = c.lane_of(first.get("lane"))
             coded = [(ln, c.code_of(ln.get("description"))) for ln in lines]
             frt = [ln for ln, code in coded if code == FREIGHT]
             correct_frt = {}
@@ -1106,7 +1125,7 @@ def waived(w: World, out: list[dict]):
             for wv in w.waivers:
                 name = wv.get("written_by_name") or wv["meta"]["from_name"]
                 one_off = one_off_for(w, c, inv_id, name, ln.get("period") or (month_of(when) if when else None),
-                                      norm_lane(ln.get("lane"))) \
+                                      c.lane_of(ln.get("lane"))) \
                     if code and c.code_loose(wv.get("charge")) == code else None
                 if not (wv_covers(c, wv, code, awb, ln, when, inv_id) or one_off) or w.aimed_at_machines(wv["ref"], wv):
                     continue
@@ -1114,7 +1133,7 @@ def waived(w: World, out: list[dict]):
                                                  "missing": None, "learned": None})
                 email = wv.get("written_by_email") or (None if yes(wv.get("quoted_only")) else wv["meta"]["from_addr"])
                 ok, sch, fb = w.authorised(c, "waivers", email, name, day(wv.get("written_on")) or wv["received"],
-                                           c.carrier, {inv_id}, lane=norm_lane(ln.get("lane")))
+                                           c.carrier, {inv_id}, lane=c.lane_of(ln.get("lane")))
                 if one_off:
                     ok, fb = True, one_off
                 if yes(wv.get("quoted_only")) and not original_held(w, wv) and not one_off:
@@ -1576,7 +1595,7 @@ def apply_decisions(w: World, items: list[dict], drop=("close", "reject")) -> li
             c = it.get("_contract")
             copy = (w.invoices.get(it.get("invoice_id")) or [None])[0]
             lines = copy["f"].get("lines") or [] if copy else []
-            lanes = {norm_lane(ln.get("lane")) for ln in lines if ln.get("lane")}
+            lanes = {c.lane_of(ln.get("lane")) if c else norm_lane(ln.get("lane")) for ln in lines} - {""}
             dates = [w.pickup(norm_awb(ln.get("awb")), ln, copy["ref"], c)[0] for ln in lines] if copy else []
             on = next((d for d in dates if d), day(copy["f"].get("invoice_date")) if copy else None)
             fact = fb.get("fact") or {}
