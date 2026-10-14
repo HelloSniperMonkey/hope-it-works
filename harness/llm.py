@@ -306,6 +306,9 @@ _client = None
 def client():
     global _client
     if _client is None:
+        if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+            raise RuntimeError("ANTHROPIC_API_KEY is required for uncached document extraction. "
+                               "Use make test or make eval-web for the self-contained offline suites.")
         import anthropic
         _client = anthropic.Anthropic(max_retries=4, timeout=600)
     return _client

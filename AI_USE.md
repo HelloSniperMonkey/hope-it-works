@@ -10,6 +10,8 @@ On the user's follow-up, OpenCode used Firecrawl to inspect public UPS, DHL, IAT
 
 A second research pass inspected the Peppol BIS Billing 3.0 rules, the FedEx EDI 210 invoicing guide, FedEx India's GST billing pages, DHL's French-language billing pages and the Factur-X/ZUGFeRD hybrid e-invoice format. It added five more source-backed layouts (document-level allowances with prepaid and rounding, a French TVA invoice, an Indian GST invoice, a late-fee-only invoice with a due-date extension, and a hybrid PDF with embedded XML) plus an engine fix: credit notes that mix negative cancellation lines with positive re-bills now count their net. The same no-API-key limitation applies.
 
+After the first GitHub Actions run failed, OpenCode inspected its logs with GitHub CLI and reproduced the empty-key authentication failure locally using an SDK mock transport. Push CI had attempted a live practice grade with no `ANTHROPIC_API_KEY` secret and no development extraction cache. The workflow was split into automatic offline verification and manually requested live grading with a credential preflight. This also corrected an inaccurate earlier claim in SOLUTION.md: `make eval` needs a key on a cold checkout; only the rule tests, golden-reader corpus and artifact validation are self-contained offline checks.
+
 ## How you worked with them
 
 The order of work was: read the brief, glossary, grader and every worked example; plan; build the reader and rules; then run the practice card, the exam sheet and my own cases. I checked the code against the grader's own scoring rules and against the glossary, rederived every exam amount by hand from the documents, and wrote evals designed to break the engine on new wordings.

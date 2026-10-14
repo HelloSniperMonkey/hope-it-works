@@ -348,6 +348,17 @@ class ActionAndWaiverRegression(unittest.TestCase):
 
 
 class ProcessRegression(unittest.TestCase):
+    def test_uncached_reader_reports_missing_api_key_clearly(self):
+        import os
+        import llm
+        from unittest.mock import patch
+        for value in (None, "", " \t "):
+            with self.subTest(value=value), patch.dict(os.environ, {}, clear=True), patch.object(llm, "_client", None):
+                if value is not None:
+                    os.environ["ANTHROPIC_API_KEY"] = value
+                with self.assertRaisesRegex(RuntimeError, "ANTHROPIC_API_KEY is required for uncached"):
+                    llm.client()
+
     def test_credit_sign_and_currency_renderings(self):
         from decimal import Decimal
         for printed, amount in (("300.00 CR", "-300"), ("300.00CR", "-300"), ("300.00 DR", "300"), ("45,50-", "-45.50"),

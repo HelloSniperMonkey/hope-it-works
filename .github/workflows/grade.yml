@@ -1,23 +1,25 @@
-# Runs on your private copy: the practice grader, then the submission check.
-# Add your key as a repository secret named ANTHROPIC_API_KEY (Settings > Secrets and variables > Actions).
-# Each run spends from that key. Remove the `push` trigger if you'd rather run it by hand only.
-name: grade
+# Pushes run the self-contained offline suites. Live grading is a manual opt-in
+# and requires the ANTHROPIC_API_KEY repository secret; it spends API credits.
+name: checks
 
 on:
   push:
   workflow_dispatch:
+    inputs:
+      live_grade:
+        description: Run the live practice grader (requires ANTHROPIC_API_KEY; spends API credits)
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
 
 jobs:
-  grade:
-    # Skip on the published template itself (its harness is the empty stub); runs on every candidate's copy.
+  offline:
     if: github.repository != 'gocomet-india/nova-takehome'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,8 +27,51 @@ jobs:
           python-version: "3.11"
       - name: Setup
         run: make setup
+      - name: Offline rule and process regressions
+        run: make test
+      - name: Source-backed layout replays (golden reader)
+        run: .venv/bin/python evals/run_web_evals.py
+      - name: Validate committed submission artifacts
+        run: make validate
+      - name: Keep offline results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-results
+          path: evals/web_results.json
+
+  grade:
+    if: github.repository != 'gocomet-india/nova-takehome' && github.event_name == 'workflow_dispatch' && inputs.live_grade
+    needs: offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check live grading credentials
+        shell: bash
+        run: |
+          if [[ -z "${ANTHROPIC_API_KEY//[[:space:]]/}" ]]; then
+            echo "::error::Live grading requires the ANTHROPIC_API_KEY repository secret. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ -z "$ANTHROPIC_BASE_URL" ]]; then
+            unset ANTHROPIC_BASE_URL
+          fi
+      - name: Setup
+        run: make setup
       - name: Practice grader (make grade)
-        run: make grade
+        shell: bash
+        run: |
+          if [[ -z "$ANTHROPIC_BASE_URL" ]]; then
+            unset ANTHROPIC_BASE_URL
+          fi
+          make grade
       - name: Submission check (make validate)
         if: always()
         run: make validate
