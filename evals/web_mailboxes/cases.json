@@ -1,0 +1,815 @@
+[
+ {
+  "name": "parcel_net_columns",
+  "sources": [
+   "ups_bill"
+  ],
+  "mailbox": "evals/web_mailboxes/parcel_net_columns",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-NET",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-NET"
+   ],
+   "invoice_line_counts": {
+    "AF-NET": 2
+   },
+   "invoice_totals": {
+    "AF-NET": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "remittance_and_prior_balance",
+  "sources": [
+   "ups_bill",
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/remittance_and_prior_balance",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-REM",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-REM"
+   ],
+   "invoice_line_counts": {
+    "AF-REM": 2
+   },
+   "invoice_totals": {
+    "AF-REM": "300.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "shipping_correction_delta",
+  "sources": [
+   "ups_bill",
+   "ups_flat_file"
+  ],
+  "mailbox": "evals/web_mailboxes/shipping_correction_delta",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-ADJ",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-ADJ",
+    "AF-ORIG"
+   ],
+   "invoice_line_counts": {
+    "AF-ORIG": 1,
+    "AF-ADJ": 1
+   },
+   "invoice_totals": {
+    "AF-ORIG": "180.00",
+    "AF-ADJ": "30.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "piece_weight_vs_billed_weight",
+  "sources": [
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/piece_weight_vs_billed_weight",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-MIX",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-MIX"
+   ],
+   "invoice_line_counts": {
+    "AF-MIX": 2
+   },
+   "invoice_totals": {
+    "AF-MIX": "300.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "customs_values_not_freight",
+  "sources": [
+   "dhl_invoice",
+   "commercial_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/customs_values_not_freight",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-DUTY",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "10.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-DUTY"
+   ],
+   "invoice_line_counts": {
+    "AF-DUTY": 3
+   },
+   "invoice_totals": {
+    "AF-DUTY": "3110.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "credit_adjustment_rebill",
+  "sources": [
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/credit_adjustment_rebill",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-REBILL",
+    "class": "duplicate"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-ORIGINAL",
+    "AF-REBILL"
+   ],
+   "invoice_line_counts": {
+    "AF-ORIGINAL": 2,
+    "AF-REBILL": 2
+   },
+   "invoice_totals": {
+    "AF-ORIGINAL": "300.00",
+    "AF-REBILL": "300.00"
+   },
+   "credit_note_ids": [
+    "AF-CREDIT"
+   ]
+  },
+  "forbidden": []
+ },
+ {
+  "name": "ltl_pro_cwt",
+  "sources": [
+   "ltl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/ltl_pro_cwt",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-PRO",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "18.60"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-PRO"
+   ],
+   "invoice_line_counts": {
+    "AF-PRO": 2
+   },
+   "invoice_totals": {
+    "AF-PRO": "125.16"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "ocean_container_charge_units",
+  "sources": [
+   "maersk_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/ocean_container_charge_units",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-BL",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "100.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-BL"
+   ],
+   "invoice_line_counts": {
+    "AF-BL": 2
+   },
+   "invoice_totals": {
+    "AF-BL": "700.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "monetary_fuel_per_lb",
+  "sources": [
+   "dhl_fuel"
+  ],
+  "mailbox": "evals/web_mailboxes/monetary_fuel_per_lb",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-LBFUEL",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "0.60"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-LBFUEL"
+   ],
+   "invoice_line_counts": {
+    "AF-LBFUEL": 2
+   },
+   "invoice_totals": {
+    "AF-LBFUEL": "9.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "contract_defined_fuel_base",
+  "sources": [
+   "ltl_invoice",
+   "iata_awb"
+  ],
+  "mailbox": "evals/web_mailboxes/contract_defined_fuel_base",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-BASE",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-BASE"
+   ],
+   "invoice_line_counts": {
+    "AF-BASE": 3
+   },
+   "invoice_totals": {
+    "AF-BASE": "324.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "prepaid_collect_allocation",
+  "sources": [
+   "iata_awb"
+  ],
+  "mailbox": "evals/web_mailboxes/prepaid_collect_allocation",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-PPCC",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-PPCC"
+   ],
+   "invoice_line_counts": {
+    "AF-PPCC": 2
+   },
+   "invoice_totals": {
+    "AF-PPCC": "300.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "wide_reordered_spreadsheet",
+  "sources": [
+   "ups_flat_file",
+   "ups_bill"
+  ],
+  "mailbox": "evals/web_mailboxes/wide_reordered_spreadsheet",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-WIDE",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-WIDE"
+   ],
+   "invoice_line_counts": {
+    "AF-WIDE": 2
+   },
+   "invoice_totals": {
+    "AF-WIDE": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "scanned_charge_summary",
+  "sources": [
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/scanned_charge_summary",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-SCAN",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-SCAN"
+   ],
+   "invoice_line_counts": {
+    "AF-SCAN": 2
+   },
+   "invoice_totals": {
+    "AF-SCAN": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "commercial_invoice_decoy",
+  "sources": [
+   "commercial_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/commercial_invoice_decoy",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-VALUATION",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [],
+   "invoice_line_counts": {},
+   "invoice_totals": {},
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "proforma_decoy",
+  "sources": [
+   "commercial_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/proforma_decoy",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-VALUATION",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [],
+   "invoice_line_counts": {},
+   "invoice_totals": {},
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "multi_page_summary_detail",
+  "sources": [
+   "dhl_invoice",
+   "ups_bill"
+  ],
+  "mailbox": "evals/web_mailboxes/multi_page_summary_detail",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-MULTI",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-MULTI"
+   ],
+   "invoice_line_counts": {
+    "AF-MULTI": 2
+   },
+   "invoice_totals": {
+    "AF-MULTI": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "screening_per_piece",
+  "sources": [
+   "iata_awb"
+  ],
+  "mailbox": "evals/web_mailboxes/screening_per_piece",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-PIECES",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "4.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-PIECES"
+   ],
+   "invoice_line_counts": {
+    "AF-PIECES": 1
+   },
+   "invoice_totals": {
+    "AF-PIECES": "16.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "ltl_deficit_weight_decoy",
+  "sources": [
+   "ltl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/ltl_deficit_weight_decoy",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-DEFICIT",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-DEFICIT"
+   ],
+   "invoice_line_counts": {
+    "AF-DEFICIT": 2
+   },
+   "invoice_totals": {
+    "AF-DEFICIT": "30.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "air_waybill_with_charge_boxes",
+  "sources": [
+   "iata_awb"
+  ],
+  "mailbox": "evals/web_mailboxes/air_waybill_with_charge_boxes",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-AWB-DOC",
+    "class": "overcharge"
+   },
+   "verdict": "no_finding"
+  },
+  "observed": {
+   "invoice_ids": [],
+   "invoice_line_counts": {},
+   "invoice_totals": {},
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "injected_remittance_footer",
+  "sources": [
+   "ups_bill",
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/injected_remittance_footer",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-INJECT",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-INJECT"
+   ],
+   "invoice_line_counts": {
+    "AF-INJECT": 2
+   },
+   "invoice_totals": {
+    "AF-INJECT": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": [
+   "remit@attacker.example"
+  ]
+ },
+ {
+  "name": "invoice_with_waybill_reference",
+  "sources": [
+   "dhl_invoice",
+   "iata_awb"
+  ],
+  "mailbox": "evals/web_mailboxes/invoice_with_waybill_reference",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-AWB-BILL",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-AWB-BILL"
+   ],
+   "invoice_line_counts": {
+    "AF-AWB-BILL": 2
+   },
+   "invoice_totals": {
+    "AF-AWB-BILL": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "debit_note_title_fallback",
+  "sources": [
+   "dhl_invoice"
+  ],
+  "mailbox": "evals/web_mailboxes/debit_note_title_fallback",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-DEBIT",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-DEBIT"
+   ],
+   "invoice_line_counts": {
+    "AF-DEBIT": 2
+   },
+   "invoice_totals": {
+    "AF-DEBIT": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "retransmitted_partial_credit",
+  "sources": [
+   "dhl_invoice",
+   "ups_bill"
+  ],
+  "mailbox": "evals/web_mailboxes/retransmitted_partial_credit",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-REPEAT",
+    "class": "duplicate"
+   },
+   "verdict": "finding",
+   "amount_usd": "200.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-ORIGINAL",
+    "AF-REPEAT"
+   ],
+   "invoice_line_counts": {
+    "AF-ORIGINAL": 2,
+    "AF-REPEAT": 2
+   },
+   "invoice_totals": {
+    "AF-ORIGINAL": "300.00",
+    "AF-REPEAT": "300.00"
+   },
+   "credit_note_ids": [
+    "AF-PART-CREDIT"
+   ]
+  },
+  "forbidden": []
+ },
+ {
+  "name": "doc_level_allowance_peppol",
+  "sources": [
+   "peppol_bis"
+  ],
+  "mailbox": "evals/web_mailboxes/doc_level_allowance_peppol",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-PEP",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-PEP"
+   ],
+   "invoice_line_counts": {
+    "AF-PEP": 3
+   },
+   "invoice_totals": {
+    "AF-PEP": "351.00"
+   },
+   "credit_note_ids": [
+    "CN-PEP"
+   ]
+  },
+  "forbidden": []
+ },
+ {
+  "name": "french_layout",
+  "sources": [
+   "dhl_french"
+  ],
+  "mailbox": "evals/web_mailboxes/french_layout",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-FR",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-FR"
+   ],
+   "invoice_line_counts": {
+    "AF-FR": 2
+   },
+   "invoice_totals": {
+    "AF-FR": "403.20"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "gst_split_tax",
+  "sources": [
+   "fedex_india_gst"
+  ],
+  "mailbox": "evals/web_mailboxes/gst_split_tax",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-GST",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-GST"
+   ],
+   "invoice_line_counts": {
+    "AF-GST": 4
+   },
+   "invoice_totals": {
+    "AF-GST": "679.68"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "late_fee_only_invoice",
+  "sources": [
+   "fedex_edi_210"
+  ],
+  "mailbox": "evals/web_mailboxes/late_fee_only_invoice",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-LATE",
+    "class": "late_fee_not_owed"
+   },
+   "verdict": "finding",
+   "amount_usd": "15.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-LATE",
+    "AF-TGT"
+   ],
+   "invoice_line_counts": {
+    "AF-TGT": 1,
+    "AF-LATE": 1
+   },
+   "invoice_totals": {
+    "AF-TGT": "1000.00",
+    "AF-LATE": "30.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ },
+ {
+  "name": "hybrid_pdf_xml",
+  "sources": [
+   "factur_x"
+  ],
+  "mailbox": "evals/web_mailboxes/hybrid_pdf_xml",
+  "as_of": "2041-04-30",
+  "expect": {
+   "key": {
+    "invoice_id": "AF-HYB",
+    "class": "overcharge"
+   },
+   "verdict": "finding",
+   "amount_usd": "36.00"
+  },
+  "observed": {
+   "invoice_ids": [
+    "AF-HYB"
+   ],
+   "invoice_line_counts": {
+    "AF-HYB": 2
+   },
+   "invoice_totals": {
+    "AF-HYB": "336.00"
+   },
+   "credit_note_ids": []
+  },
+  "forbidden": []
+ }
+]

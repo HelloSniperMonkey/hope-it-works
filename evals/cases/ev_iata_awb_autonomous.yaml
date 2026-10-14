@@ -1,0 +1,12 @@
+name: waybill printed 'VA 9004-0001', tracked as 'VA90040001'; no date on the bill
+mailbox: evals/mailboxes/iata_awb
+as_of: '2036-03-31'
+mode: autonomous
+expect:
+  key:
+    invoice_id: VLA-36-04001
+    class: overcharge
+  verdict: finding
+  amount_usd: '26.23'
+  action: execute:dispute
+why: only the tracking export dates the collection (period A); a pickup from tracking lets it go unattended

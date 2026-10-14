@@ -54,6 +54,7 @@ ATTACHMENT_KINDS = ("contract", "contract_instrument", "invoice", "credit_note",
                     "tracking_export", "ap_register", "other")
 EVENTS = ("PICKED_UP", "DEPARTED", "ARRIVED_FACILITY", "OUT_FOR_DELIVERY", "DELIVERED", "COLLECTED_BY_CONSIGNEE",
           "CUSTOMS_HOLD", "RELEASED", "OTHER")
+FEE_UNITS = ("per_shipment", "per_kg", "per_lb", "per_cwt", "per_piece", "per_container", "per_day", "per_month", "other")
 
 RATE_ROW = O(band=S("the weight band as printed, e.g. 'minimum charge', '0-44.5 kg', '300+ kg'"),
              lo=N(NUM), hi=N(NUM), is_minimum_charge=B, rate=NUM, currency=N(S()), src=SRC)
@@ -71,7 +72,10 @@ EMAIL = O(
                        "'n/a' otherwise"),
     attachment_kinds=A(O(name=S(), kind=E(*ATTACHMENT_KINDS)), "one entry per attachment. invoice = any document "
                        "from the carrier that bills charges: an invoice, a billing document, a charges advice, or a "
-                       "monthly statement (spreadsheet or PDF) of fees. contract = a master agreement; "
+                        "monthly statement (spreadsheet or PDF) of fees; a debit adjustment is an invoice. "
+                        "A commercial invoice for customs/product valuation or a pro forma quotation is other, not "
+                        "a freight invoice. Credit adjustment / credit memo / avoir = credit_note, even when the "
+                        "form also has an Invoice Number field. contract = a master agreement; "
                        "contract_instrument = an amendment, revised annex, exchange-rate update or extension; "
                        "credit_note; air_waybill; dg_declaration; tracking_export = a shipment milestone export; "
                        "ap_register = the shipper's payables ledger. other only when none of these fit."),
@@ -122,7 +126,7 @@ CONTRACT = O(
     fuel=A(O(month=S("YYYY-MM"), percent=NUM, src=SRC)),
     fuel_rule=O(applies_to=A(S("charge codes the fuel % applies to, e.g. FRT")), src=SRC),
     accessorials=A(O(code=S(), name=S(), fee=NUM, currency=N(S()),
-                     unit=E("per_shipment", "per_kg", "per_day", "per_month", "other"),
+                     unit=E(*FEE_UNITS),
                      only_months=A(I, "month numbers it applies in, empty if always"), src=SRC)),
     charge_codes=A(O(code=S(), name=S(), aliases=A(S()), src=SRC)),
     fx=A(O(month=S("YYYY-MM"), inr_per_usd=NUM, src=SRC)),
@@ -145,7 +149,9 @@ CONTRACT = O(
         handling_margin=O(applies=B, percent=N(NUM), step_down_percent=N(NUM), step_down_after_spend=N(NUM),
                           basis=N(S()), src=SRC),
         improvement_credit=O(applies=B, percent=N(NUM), due_days_after_anniversary=N(I), src=SRC),
-        other_credits=A(O(name=S(), percent=N(NUM), amount=N(NUM), basis=S(), due=S(), src=SRC)),
+        other_credits=A(O(name=S(), percent=N(NUM), amount=N(NUM), basis=S(),
+                          contract_years=A(I, "the contract years it is earned for, empty if every year"),
+                          due_days_after_anniversary=N(I), src=SRC)),
         payment=O(days=N(I), src=SRC),
         late_fee=O(percent_per_month=N(NUM), grace_days=N(I), days_per_month=N(I), compounding=B, src=SRC,
                    compounding_src=SRC),
@@ -167,8 +173,7 @@ INSTRUMENT = O(
     effective_from=N(DATE), effective_to=N(DATE), effective_src=SRC,
     rate_changes=A(O(lane=S(), band=S(), lo=N(NUM), hi=N(NUM), is_minimum_charge=B, rate=NUM,
                      period=N(S("only if the row is for one rate period")), currency=N(S()), src=SRC)),
-    accessorial_changes=A(O(code=N(S()), name=S(), fee=NUM, unit=E("per_shipment", "per_kg", "per_day",
-                                                                   "per_month", "other"), src=SRC)),
+    accessorial_changes=A(O(code=N(S()), name=S(), fee=NUM, unit=E(*FEE_UNITS), src=SRC)),
     fuel_changes=A(O(month=S("YYYY-MM"), percent=NUM, src=SRC)),
     fx=A(O(month=S("YYYY-MM"), inr_per_usd=NUM, src=SRC)),
     new_end_date=N(DATE), new_notice_deadline=N(DATE), term_src=SRC,
@@ -183,7 +188,9 @@ INVOICE = O(
     contract_id=N(S()), currency=S(), issuer=S(),
     marked_copy=S("'yes' if the document itself is marked copy / duplicate / for your records, else 'no'"),
     lines=A(O(
-        awb=N(S("the waybill this line is for, as printed (a house AWB keeps its suffix)")),
+        awb=N(S("the shipment reference this line is for: AWB, parcel tracking number, PRO, consignment or "
+                "container reference. Preserve house/child/container suffixes; a shared master reference isn't "
+                "a reason to collapse distinct billed shipment units.")),
         master_awb=N(S()),
         date=N(DATE), date_label=N(S("the column the date is under, e.g. 'Pickup', 'Collected'")),
         description=S("the charge label as printed, without the waybill reference"),
@@ -262,9 +269,25 @@ INSTRUCTIONS = {
                            "update or an extension. Extract what it changes, from when, and any document it cites "
                            "(say whether that document is included here).",
     "invoice": "This is a carrier invoice, statement of account or charges advice. Extract the header and every "
-               "charge line (address, bank and page lines are not charges). A late-fee line names the invoice it "
-               "is charged on.",
-    "credit_note": "This is a credit note. Extract its header and lines.",
+                "charge line (address, bank and page lines are not charges). A late-fee line names the invoice it "
+                "is charged on. In Published/Gross, Incentive/Discount, Billed/Net columns, amount is the net billed "
+                "charge; never add all columns together. A Shipping Charge Correction bills only its adjustment "
+                "amount, not the original and corrected comparison rows. Do not turn summary totals, remittance "
+                "coupons, prior-invoice balances, piece weights/dimensions or customs item values into charge lines. "
+                "Use this invoice's current-period total, not the account's outstanding balance. Preserve printed "
+                "quantity units (kg/lb/CWT/pieces/containers); do not silently convert. Billed weight is not the sum "
+                "of actual piece weights when volumetric or mixed-weight billing is stated. Prepaid/Collect columns "
+                "are payment allocation of charges, not two independent bills. French and German layouts print the "
+                "same facts under other labels: FACTURE/Rechnung = invoice, avoir/Gutschrift = credit note, echeance/"
+                "fällig = due date, poids taxé = chargeable weight, TVA/USt/MwSt = VAT, Total HT/Netto = net total, "
+                "TTC/Brutto = including tax. CGST, SGST, IGST and GST are taxes, never charges. Document-level "
+                "allowances, applied prepaid amounts and cash-rounding rows adjust the payable; the per-line net "
+                "amounts are the billed charges. One invoice may contain nothing but late fees.",
+    "credit_note": "This is a credit note, credit adjustment, credit memo or avoir. Extract its own document number "
+                   "separately from the original invoice it reverses. Preserve negative/bracketed/CR amounts and "
+                   "identify the original invoice and shipment references. Repeated remittance fields are not new "
+                   "lines. A note may mix negative cancellation lines with positive re-billed lines; keep the "
+                   "printed sign of each line.",
     "air_waybill": "This is an air waybill. Extract it.",
     "dg_declaration": "This is a shipper's declaration of dangerous goods. Extract each item; dry ice (UN1845) "
                       "used only as a refrigerant is refrigerant_only.",
@@ -325,14 +348,14 @@ def _call(content: list, schema: dict, max_tokens: int, effort: str) -> dict:
             with client().beta.messages.stream(**kw) as stream:
                 msg = stream.get_final_message()
         except anthropic.BadRequestError as e:
-            text = str(e).lower()
-            if "fallback" in text or "beta" in text:
-                _degraded.add("fallbacks")
-            elif any(w in text for w in ("schema", "output_config", "format", "grammar")):
-                _degraded.add("format")
-            else:
-                raise
-            last = f"degraded after: {str(e)[:200]}"
+            # a gateway may refuse a feature in its own words: drop the optional ones this request sent, in turn
+            sent = [x for x in ("fallbacks", "format") if x in kw or x in kw["output_config"]]
+            if not sent:
+                raise                       # nothing optional was sent: a real bad request
+            drop = "format" if "format" in sent and any(w in str(e).lower() for w in ("schema", "format")) else sent[0]
+            if not any(x in _degraded for x in sent):   # another thread may already have dropped one: then retry
+                _degraded.add(drop)
+            last = f"dropped {drop} after: {str(e)[:200]}"
             continue
         if msg.stop_reason == "refusal":
             last = f"refused ({getattr(msg.stop_details, 'category', None)})"

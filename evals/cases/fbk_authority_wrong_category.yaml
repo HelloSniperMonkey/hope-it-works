@@ -1,0 +1,12 @@
+name: authority confirmed for another category does not make a waiver count
+mailbox: evals/mailboxes/feedback_one_off
+as_of: '2036-06-02'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_authority_payment_terms.json
+expect:
+  key:
+    invoice_id: VLA-ST-3604
+    class: waived_but_billed
+  verdict: no_finding
+why: same person and contract, but the category is payment_terms, not waivers

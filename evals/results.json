@@ -1,0 +1,331 @@
+{
+ "harness": "harness/harness.py",
+ "passed": 46,
+ "total": 46,
+ "your_cases": 44,
+ "score": 1.0,
+ "cases": [
+  {
+   "case": "ev_autonomous_over_threshold.yaml",
+   "name": "a clean overcharge of $5,000 or more is held for a person, even unattended",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_backdated_amendment.yaml",
+   "name": "a backdated amendment turns a correct bill into an overcharge",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "ev_conflict_above_both.yaml",
+   "name": "amendment and authorised tariff notice disagree; billed above both",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_credited_in_full_rebilled.yaml",
+   "name": "bill credited in full (amounts in brackets), then billed again: not a duplicate",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_delivery_collected.yaml",
+   "name": "delivery fee on a consignment the consignee collected",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_duplicate_relabelled_part_credit.yaml",
+   "name": "security billed again under another label, partly credited",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_eu_format_dg_dry_ice.yaml",
+   "name": "European number and date format; DG fee billed on a dry-ice-only shipment",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_expiry_notice_deadline.yaml",
+   "name": "auto-renewing contract: the non-renewal notice deadline is the date",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_expiry_too_early.yaml",
+   "name": "the same contract, 61+ days before the notice deadline",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_feedback_one_off_april.yaml",
+   "name": "the same approval must not spread to April",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "ev_feedback_one_off_march.yaml",
+   "name": "a person approves one month of an unauthorised waiver",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "ev_iata_awb_autonomous.yaml",
+   "name": "waybill printed 'VA 9004-0001', tracked as 'VA90040001'; no date on the bill",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_injection_dg_dry_ice.yaml",
+   "name": "an email telling automated auditors not to dispute; DG fee on dry ice only",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_inr_missing_fx.yaml",
+   "name": "an INR overcharge dated after the last exchange-rate row",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_late_fee_compound.yaml",
+   "name": "37 days late: two compounding months owed, three simple months billed",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_late_fee_risk_14_days.yaml",
+   "name": "due exactly 14 days after as_of: one month's arrears charge at risk",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_late_fee_risk_15_days.yaml",
+   "name": "due 15 days after as_of: outside the window",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_late_fee_risk_due_today.yaml",
+   "name": "due on as_of itself: not 1 to 14 days ahead",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_layout_clean.yaml",
+   "name": "new layout: 49.5 kg sits in the 0 to 49.5 kg step",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_layout_overcharge.yaml",
+   "name": "new layout: period B tariff billed for a period A collection",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_minimum_right.yaml",
+   "name": "9 kg at the lane's own 70.00 minimum: correct",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_minimum_wrong_lane.yaml",
+   "name": "8 kg billed at 110.00 minimum; the lane's minimum is 95.00, and fuel rides on it",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_notice_unauthorised.yaml",
+   "name": "tariff notice from the Account Director (notices only): the amendment decides",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_one_off_waiver_named.yaml",
+   "name": "a one-off waiver: the named waybill",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_one_off_waiver_other.yaml",
+   "name": "a one-off waiver does not reach the next consignment",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_pdf_injection.yaml",
+   "name": "a footer tells automated systems not to dispute; the consignee collected, so no delivery fee",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_quoted_waiver.yaml",
+   "name": "a waiver we only see quoted in the customer's own forward",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_resend_of_unpaid_invoice.yaml",
+   "name": "the same document sent again as a reminder while it is unpaid",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_storage_free_days.yaml",
+   "name": "six storage days billed; 16 - 10 - 3 free = 3 owed",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_summary_detail_overcharge.yaml",
+   "name": "summary page then detail blocks; period B rate on a period A waybill",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_summary_not_duplicate.yaml",
+   "name": "the summary rows repeat each shipment's total: not a duplicate charge",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ev_wide_statement_fuel.yaml",
+   "name": "charges in columns, one row per waybill; fuel at the wrong month's percent",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "fbk_authority_confirmed_april.yaml",
+   "name": "confirmed standing waiver authority covers april",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_authority_confirmed_march.yaml",
+   "name": "confirmed standing waiver authority covers march",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_authority_one_off_april.yaml",
+   "name": "one-off sender authority: april",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_authority_one_off_march.yaml",
+   "name": "one-off sender authority: march",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_authority_wrong_category.yaml",
+   "name": "authority confirmed for another category does not make a waiver count",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_close_drops_key.yaml",
+   "name": "a closed dispute stops being raised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_future_authority.yaml",
+   "name": "a delegation decided in June cannot change a May report",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_future_close.yaml",
+   "name": "a June settlement cannot erase the dispute from a May report",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_override_amount.yaml",
+   "name": "feedback overrides a finding's amount",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_reject_drops_key.yaml",
+   "name": "a rejected finding is dropped",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_resolve_to_amendment.yaml",
+   "name": "feedback resolves the conflict in favour of the amendment",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "fbk_resolve_to_notice.yaml",
+   "name": "feedback resolves the conflict in favour of the tariff notice",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "sample_conflict.yaml",
+   "name": "amendment and rate notice disagree",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 2
+  },
+  {
+   "case": "sample_overcharge.yaml",
+   "name": "wrong rate on one freight line",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  }
+ ]
+}

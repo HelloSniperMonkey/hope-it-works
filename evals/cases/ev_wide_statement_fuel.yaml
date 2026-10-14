@@ -1,0 +1,12 @@
+name: charges in columns, one row per waybill; fuel at the wrong month's percent
+mailbox: evals/mailboxes/wide_statement
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-ST-36W2
+    class: overcharge
+  verdict: finding
+  amount_usd: '10.84'
+  action: draft:dispute
+why: March fuel is 20.85% of linehaul; the row bills 23.10%

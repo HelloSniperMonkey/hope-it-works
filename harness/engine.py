@@ -27,20 +27,53 @@ def rhu(x) -> Decimal:
 
 
 def D(x) -> Decimal | None:
+    """A printed number -> Decimal, whichever way it is written: 1,234.56 / 1.234,56 / 1 234,56 / (12.50) / -12.50.
+    The last separator is the decimal point when both appear; a lone comma is a decimal point unless it groups
+    exactly three digits."""
     if x is None or isinstance(x, bool):
         return None
-    s = re.sub(r"[,\s%$]|USD|INR|kg", "", str(x), flags=re.I)
+    s = str(x).strip().replace("\u2212", "-").replace("\u00a0", " ")
+    credit = bool(re.search(r"(?<=\d)\s*CR\s*$", s, re.I))
+    s = re.sub(r"(?<=\d)\s*(?:CR|DR)\s*$", "", s, flags=re.I)
+    s = re.sub(r"[\s%$\u20ac\u00a3\u20b9]|USD|INR|EUR|GBP|CAD|AUD|JPY|kg|lbs?|CWT", "", s, flags=re.I)
+    neg = s.startswith("(") and s.endswith(")") or s.startswith("-") or s.endswith("-") or credit
+    s = s.strip("()-+")
+    if "," in s and "." in s:
+        dec = "," if s.rfind(",") > s.rfind(".") else "."
+        s = s.replace("." if dec == "," else ",", "").replace(dec, ".")
+    elif "," in s:
+        s = s.replace(",", "") if re.fullmatch(r"\d{1,3}(,\d{3})+", s) else s.replace(",", ".")
+    elif s.count(".") > 1:
+        s = s.replace(".", "")
     try:
-        return Decimal(s) if s else None
+        value = -Decimal(s) if neg and s else (Decimal(s) if s else None)
+        return value if value is not None and value.is_finite() else None
     except InvalidOperation:
         return None
 
 
 def day(x) -> date | None:
+    """ISO, DD.MM.YYYY, '4 Feb 2036', or a slash date whose order is unambiguous (a part above 12); else None."""
+    from datetime import datetime
+    t = str(x or "").strip()
     try:
-        return date.fromisoformat(str(x)[:10])
-    except (TypeError, ValueError):
-        return None
+        return date.fromisoformat(t[:10])
+    except ValueError:
+        pass
+    m = re.fullmatch(r"(\d{1,2})([./])(\d{1,2})\2(\d{4})", t)
+    if m:
+        a, sep, b, y = int(m[1]), m[2], int(m[3]), int(m[4])
+        d, mo = (a, b) if sep == "." or a > 12 else ((b, a) if b > 12 else (None, None))
+        try:
+            return date(y, mo, d) if d else None
+        except ValueError:
+            return None
+    for fmt in ("%d %b %Y", "%d %B %Y", "%b %d, %Y", "%B %d, %Y"):
+        try:
+            return datetime.strptime(t, fmt).date()
+        except ValueError:
+            pass
+    return None
 
 
 def money(x) -> str:
@@ -49,6 +82,10 @@ def money(x) -> str:
 
 def norm_inv(s) -> str:
     return re.sub(r"[\s#:]", "", str(s or "")).upper()
+
+
+def norm_awb(s) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(s or "").upper())
 
 
 def norm_lane(s) -> str:
@@ -218,16 +255,20 @@ class World:
     """Everything the mailbox has said by as_of (end of day UTC), indexed for the rules."""
 
     def __init__(self, state: Path, as_of: date, feedback: list[dict]):
-        self.as_of, self.feedback = as_of, feedback
+        self.as_of = as_of
+        self.feedback = sorted((fb for fb in feedback if not day(fb.get("_decided_at")) or
+                                day(fb["_decided_at"]) <= as_of), key=lambda fb: fb.get("_decided_at") or "")
         self.contracts: dict[str, Contract] = {}
         self.instruments, self.notices, self.waivers, self.extensions = [], [], [], []
         self.events: dict[str, list] = defaultdict(list)      # awb -> [(event, date, source, row/ev, ref)]
         self.invoices: dict[str, list] = defaultdict(list)    # invoice id -> copies, in order received
         self.credit_notes, self.registers, self.refs, self.email_fx = [], [], [], []
+        self.credit_ids = set()
         self.awbs: dict[str, tuple] = {}
         self.dgds: dict[str, tuple] = {}
         self.automation: list[dict] = []
         self.docs_received: dict[str, date] = {}
+        self.unreadable = []
         self.email_docs: dict[str, list] = defaultdict(list)       # email ref -> [{"pages": ...}]
         recs = []
         for f in sorted((state / "docs").glob("*.json")):
@@ -243,6 +284,8 @@ class World:
                                                                  if d["kind"] == "email"), None)})
             for d in r["docs"]:
                 self.docs_received[d["ref"]] = rec_day
+                if d["kind"] == "unreadable" or d.get("facts") is None:
+                    self.unreadable.append(d["ref"])
                 self._add(d["kind"], d.get("facts") or {}, d["ref"], meta, rec_day, email_facts, d.get("pages"))
 
     def _add(self, kind, f, ref, meta, rec, email_facts, pages=None):
@@ -260,12 +303,13 @@ class World:
             for x in f.get("due_date_extensions") or []:
                 self.extensions.append({**x, **ctx})
             for ev in f.get("shipment_events") or []:
-                if ev.get("awb") and day(ev.get("date")):
-                    self.events[ev["awb"].strip().upper()].append(
+                if ev.get("awb") and day(ev.get("date")) and not self.aimed_at_machines(ref, ev):
+                    self.events[norm_awb(ev["awb"])].append(
                         {"event": ev["event"], "date": day(ev["date"]), "source": "email", "fault": ev.get("fault"),
                          "reason": ev.get("reason_code"), "obj": ev, "ref": ref, "meta": meta})
             for x in f.get("fx_rates") or []:
-                self.email_fx.append({**x, **ctx})
+                if not self.aimed_at_machines(ref, x):
+                    self.email_fx.append({**x, **ctx})
         elif kind == "contract" and f.get("contract_id"):
             c = Contract(f, ref, rec)
             self.contracts.setdefault(c.id, c)
@@ -274,15 +318,18 @@ class World:
         elif kind == "invoice" and f.get("invoice_number"):
             self.invoices[norm_inv(f["invoice_number"])].append({**ctx, "f": f, "email": email_facts})
         elif kind == "credit_note":
-            self.credit_notes.append({**f, **ctx})
+            key = (str(f.get("contract_id") or "").upper(), norm_inv(f.get("number")))
+            if not key[1] or key not in self.credit_ids:
+                self.credit_notes.append({**f, **ctx})
+                self.credit_ids.add(key)
         elif kind == "air_waybill" and f.get("awb"):
-            self.awbs.setdefault(f["awb"].strip().upper(), (f, ref))
+            self.awbs.setdefault(norm_awb(f["awb"]), (f, ref))
         elif kind == "dg_declaration" and f.get("awb"):
-            self.dgds.setdefault(f["awb"].strip().upper(), (f, ref))
+            self.dgds.setdefault(norm_awb(f["awb"]), (f, ref))
         elif kind == "tracking_export":
             for row in f.get("rows") or []:
                 if row.get("awb") and day(row.get("date")):
-                    self.events[row["awb"].strip().upper()].append(
+                    self.events[norm_awb(row["awb"])].append(
                         {"event": row["event"], "date": day(row["date"]), "source": "tracking", "fault": None,
                          "reason": row.get("reason_code"), "obj": row, "ref": ref, "meta": meta})
         elif kind == "ap_register":
@@ -290,7 +337,7 @@ class World:
 
     # -- people and authority ------------------------------------------------------------------------------------------
     def authorised(self, c: Contract | None, category: str, email: str | None, name: str | None, on: date | None,
-                   party: str | None = None):
+                   party: str | None = None, invs=(), lane=None, cls=None):
         """-> (ok, schedule-1 evidence or None, feedback item or None). Schedule 1 is matched on the address it lists
         (notices count only from those addresses); a confirmed feedback fact covers exactly its person, contract and
         category, inside its dates."""
@@ -304,19 +351,27 @@ class World:
                 return True, cite(c.ref, p), None
             if not em and name and norm_label(name) == norm_label(p.get("name")):
                 return True, cite(c.ref, p), None
-        for fb in self.feedback:
+        for fb in reversed(self.feedback):
             fact = fb.get("fact") or {}
             if fb.get("decision") != "confirm" or fact.get("type") != "sender_authority":
                 continue
-            sc = (fb.get("scope") or {}).get("applies_to") or {}
             cats = (fact.get("value") or {}).get("categories") or []
-            who = sc.get("person") or (fact.get("subject") or {}).get("person")
-            if sc.get("contract_id") not in (None, c.id) or (sc.get("category") and sc["category"] != category) \
-                    or category not in cats or norm_label(who) != norm_label(name):
+            subj = fact.get("subject") or {}
+            if category not in cats or norm_label(subj.get("person")) != norm_label(name) or \
+                    (subj.get("party") and subj["party"] != party):
                 continue
-            if in_scope(fb, on):
+            ids = {norm_inv(x) for x in invs if x}
+            if feedback_matches(fb, on, contract_id=c.id, lane=lane, person=name, category=category,
+                                party=party, invoice_id=next(iter(ids)) if len(ids) == 1 else None,
+                                **{"class": cls or {"rates": "overcharge", "waivers": "waived_but_billed"}.get(category)}):
                 return True, None, fb
         return False, None, None
+
+    def aimed_at_machines(self, ref: str, obj: dict) -> bool:
+        """Text addressed to automated readers is data: a term written in it binds nobody."""
+        q = cite(ref, obj)
+        return bool(q) and any(a["doc"] == q["doc"] and (q["quote"] in a["quote"] or a["quote"] in q["quote"])
+                               for a in self.automation)
 
     # -- documents -----------------------------------------------------------------------------------------------------
     def contract_for(self, contract_id: str | None) -> Contract | None:
@@ -340,15 +395,17 @@ class World:
                         best = (k, row, reg["ref"])
         return (best[1], best[2]) if best else (None, None)
 
-    def due_date(self, inv_id: str, c: Contract | None, base_due: date | None):
-        """Due date after any extension from the carrier's payment-terms person -> (date, evidence, feedback)."""
+    def due_date(self, inv_id: str, c: Contract | None, base_due: date | None, invs=(), cls=None):
+        """Due date after any extension from the carrier's payment-terms person -> (date, evidence, feedback).
+        `invs`: the invoices whose keys this decides, for one-off feedback."""
         due, ev, fb_used = base_due, [], None
         for x in self.extensions:
-            if norm_inv(x.get("invoice_number")) != inv_id or yes(x.get("quoted_only")):
+            if norm_inv(x.get("invoice_number")) != inv_id or yes(x.get("quoted_only")) or \
+                    self.aimed_at_machines(x["ref"], x):
                 continue
             email = x["meta"]["from_addr"] if not x.get("written_by_email") else x["written_by_email"]
             ok, sch, fb = self.authorised(c, "payment_terms", email, x.get("written_by_name") or
-                                          x["meta"]["from_name"], x["received"], c.carrier if c else None)
+                                          x["meta"]["from_name"], x["received"], c.carrier if c else None, invs, cls=cls)
             nd = day(x.get("new_due_date"))
             if ok and nd:
                 due, ev, fb_used = nd, cites(cite(x["ref"], x), sch), fb
@@ -358,15 +415,15 @@ class World:
         """-> (date, source, evidence): tracking export, then a carrier "picked up" email, then the AWB, then the
         date printed on the invoice line."""
         if awb:
-            evs = self.events.get(awb.strip().upper(), [])
+            evs = self.events.get(norm_awb(awb), [])
             for src in ("tracking", "email"):
                 hits = [e for e in evs if e["event"] == "PICKED_UP" and e["source"] == src
                         and (src == "tracking" or self.from_carrier(e["meta"], c))]
                 if hits:
                     e = hits[0]
                     return e["date"], src, cites(cite(e["ref"], e["obj"]))
-            if awb.strip().upper() in self.awbs:
-                f, ref = self.awbs[awb.strip().upper()]
+            if norm_awb(awb) in self.awbs:
+                f, ref = self.awbs[norm_awb(awb)]
                 if day(f.get("executed_on")):
                     return day(f["executed_on"]), "awb", cites(cite(ref, f, "date_src"), cite(ref, f))
         if line and day(line.get("date")):
@@ -382,7 +439,8 @@ class World:
 
     def instruments_for(self, c: Contract) -> list[dict]:
         out = [i for i in self.instruments if str(i.get("contract_id") or "").upper() == c.id.upper()]
-        return sorted(out, key=lambda i: (day(i.get("effective_from")) or date.min, i["received"]))
+        return sorted(out, key=lambda i: (day(i.get("signed_on")) or i["received"],
+                                         day(i.get("effective_from")) or date.min, i["received"]))
 
     def held_instrument(self, c: Contract, name: str) -> dict | None:
         want = norm_label(name)
@@ -396,7 +454,44 @@ class World:
 def in_scope(fb: dict, on: date | None) -> bool:
     sc = fb.get("scope") or {}
     a, b = day(sc.get("valid_from")), day(sc.get("valid_to"))
-    return on is None or ((a is None or a <= on) and (b is None or on <= b))
+    return (a is None and b is None) if on is None else ((a is None or a <= on) and (b is None or on <= b))
+
+
+def feedback_matches(fb: dict, on: date | None, **context) -> bool:
+    """Every scope filter must be proved. A one-off is also restricted to the full finding key.
+
+    Standing dates describe the covered documents/shipments. One-off approvals can retrospectively approve an old
+    charge; their availability is governed by decided_at, and their named key/months still restrict coverage.
+    """
+    scope = fb.get("scope") or {}
+    filters = dict(scope.get("applies_to") or {})
+    if scope.get("kind") == "one_off":
+        for k, v in (fb.get("finding_key") or {}).items():
+            if k in filters and scope_value(k, filters[k]) != scope_value(k, v):
+                return False
+            filters[k] = v
+    for k, v in filters.items():
+        if v is not None and (context.get(k) is None or scope_value(k, v) != scope_value(k, context[k])):
+            return False
+    return scope.get("kind") == "one_off" or in_scope(fb, on)
+
+
+def scope_value(key: str, value):
+    if key == "invoice_id":
+        return norm_inv(value)
+    if key == "lane":
+        return norm_lane(value)
+    if key == "person":
+        return norm_label(value)
+    return str(value).strip()
+
+
+def later_than_feedback(src: dict, fb: dict) -> bool:
+    decided = day(fb.get("_decided_at"))
+    if decided:
+        return (day((src.get("obj") or {}).get("signed_on")) or src["received"]) > decided
+    valid = day((fb.get("scope") or {}).get("valid_from"))
+    return bool(src.get("eff") and valid and src["eff"] > valid)
 
 
 # ---- report items -----------------------------------------------------------------------------------------------------
@@ -428,8 +523,8 @@ def learned(fb: dict | None) -> dict | None:
 class Pricer:
     """Reprices invoice lines from the terms in force on the pickup date."""
 
-    def __init__(self, w: World, c: Contract):
-        self.w, self.c = w, c
+    def __init__(self, w: World, c: Contract, inv: str | None = None):
+        self.w, self.c, self.inv = w, c, inv
 
     def fx(self, inv_date: date):
         m = month_of(inv_date)
@@ -442,7 +537,7 @@ class Pricer:
         for r in self.w.email_fx:
             if r.get("month") == m and str(r.get("contract_id") or self.c.id).upper() == self.c.id.upper():
                 ok, sch, _ = self.w.authorised(self.c, "treasury", r["meta"]["from_addr"], r["meta"]["from_name"],
-                                               r["received"])
+                                               r["received"], None, {self.inv})
                 if ok:
                     return D(r["inr_per_usd"]), cites(cite(r["ref"], r), sch)
         return None, []
@@ -536,10 +631,12 @@ class Pricer:
             accepted = self.accepted(lane, n, pickup)
             email = n.get("written_by_email") or n["meta"]["from_addr"]
             ok, sch, fb = w.authorised(c, "rates", email, n.get("written_by_name") or n["meta"]["from_name"],
-                                       n["received"], c.carrier)
+                                       n["received"], c.carrier, {self.inv}, lane=lane)
+            if accepted and amd and later_than_feedback(amd, accepted) and not ok:
+                accepted = None   # an older confirmed notice cannot overrule a later signed amendment
             if not ok and not accepted:
                 continue
-            if any(cite(n["ref"], x) in w.automation for x in [n]):
+            if w.aimed_at_machines(n["ref"], n):
                 continue
             notice = {"label": f"rate notice {n.get('reference') or ''}".strip(), "rows": n.get("rows") or [],
                       "ref": n["ref"], "level": 2, "eff": a, "kind": "notice", "received": n["received"],
@@ -549,10 +646,11 @@ class Pricer:
             return {"kind": "missing", "missing": missing, "msa": msa}
         if amd and notice:
             prec, fb = self.precedence(lane, pickup)
-            if fb and not (amd["eff"] and day((fb.get("scope") or {}).get("valid_from"))
-                           and amd["eff"] > day(fb["scope"]["valid_from"])):
-                use = fb.get("fact", {}).get("value", {}).get("use", "")
-                return {"kind": "ok", "src": notice if "notice" in use else amd, "msa": msa, "fb": fb}
+            if fb:
+                later = later_than_feedback(amd, fb)
+                use = (prec or {}).get("use", "")
+                return {"kind": "ok", "src": amd if later or "notice" not in use else notice, "msa": msa,
+                        "fb": None if later else fb}
             rule = (c.clause("precedence") or {}).get("notice_vs_amendment") or "not_stated"
             if rule == "unranked":
                 return {"kind": "conflict", "a": amd, "b": notice, "msa": msa, "fb": notice_fb,
@@ -568,14 +666,20 @@ class Pricer:
 
     def accepted(self, lane: str, n: dict, pickup: date) -> dict | None:
         """A person's close + rate_accepted: that notice is the rate for this contract and lane inside its dates."""
-        for fb in self.w.feedback:
+        for fb in reversed(self.w.feedback):
             fact = fb.get("fact") or {}
-            if fact.get("type") != "rate_accepted":
+            if fact.get("type") != "rate_accepted" or fb.get("decision") not in ("close", "confirm"):
                 continue
             subj, val = fact.get("subject") or {}, fact.get("value") or {}
             sc = (fb.get("scope") or {}).get("applies_to") or {}
-            if str(sc.get("contract_id") or subj.get("contract_id") or "").upper() != self.c.id.upper() or \
-                    norm_lane(sc.get("lane") or subj.get("lane")) != lane or not in_scope(fb, pickup):
+            who = n.get("written_by_name") or n["meta"]["from_name"]
+            if str(subj.get("contract_id") or sc.get("contract_id") or "").upper() != self.c.id.upper() or \
+                    norm_lane(subj.get("lane") or sc.get("lane")) != lane or not feedback_matches(
+                        fb, pickup, contract_id=self.c.id, lane=lane, person=who, category="rates",
+                        party=self.c.carrier, invoice_id=self.inv, **{"class": "overcharge"}):
+                continue
+            a, b = day(val.get("effective_from")), day(val.get("effective_to"))
+            if (a and pickup < a) or (b and pickup > b):
                 continue
             if val.get("sent_by") and norm_label(val["sent_by"]) != norm_label(n.get("written_by_name") or
                                                                                n["meta"]["from_name"]):
@@ -586,14 +690,16 @@ class Pricer:
         return None
 
     def precedence(self, lane: str, pickup: date):
-        for fb in self.w.feedback:
+        for fb in reversed(self.w.feedback):
             fact = fb.get("fact") or {}
-            if fact.get("type") != "precedence":
+            if fact.get("type") != "precedence" or fb.get("decision") != "resolve_conflict":
                 continue
             sc = (fb.get("scope") or {}).get("applies_to") or {}
             subj = fact.get("subject") or {}
             if str(sc.get("contract_id") or subj.get("contract_id") or "").upper() == self.c.id.upper() and \
-                    norm_lane(sc.get("lane") or subj.get("lane")) == lane and in_scope(fb, pickup):
+                    norm_lane(sc.get("lane") or subj.get("lane")) == lane and feedback_matches(
+                        fb, pickup, contract_id=self.c.id, lane=lane, category="rates", invoice_id=self.inv,
+                        **{"class": "overcharge"}):
                 return fact.get("value"), fb
         return None, None
 
@@ -604,10 +710,11 @@ class Pricer:
             return None, []
         amt = rhu(D(row["rate"]) * cw)
         ev = [cite(src["ref"], row)]
-        mrow = min_of(src["rows"]) or (min_of(src.get("msa_rows") or []) if src.get("msa_rows") else None)
+        own = min_of(src["rows"])
+        mrow = own or min_of(src.get("msa_rows") or [])
         if mrow and D(mrow.get("rate")) is not None and amt < D(mrow["rate"]):
             amt = rhu(D(mrow["rate"]))
-            ev.append(cite(src["ref"], mrow))
+            ev.append(cite(src["ref"] if own else src.get("msa_ref"), mrow))
         return amt, cites(*ev)
 
 
@@ -615,7 +722,7 @@ class Pricer:
 def shipments(lines: list[dict]) -> dict:
     out = defaultdict(list)
     for ln in lines:
-        out[(ln.get("awb") or "").strip().upper()].append(ln)
+        out[norm_awb(ln.get("awb"))].append(ln)
     return out
 
 
@@ -630,11 +737,10 @@ def overcharges(w: World, out: list[dict]):
         c = w.contract_for(f.get("contract_id"))
         if c is None:
             continue
-        pr = Pricer(w, c)
-        inv_date = day(f.get("invoice_date"))
+        pr = Pricer(w, c, inv_id)
         diffs, ev, flags = [], [], {"pickup": set(), "lanes": set(), "levels": True, "issues": 0, "learned": None,
                                     "retro": False}
-        conflict = None
+        conflicts: dict[str, dict] = {}      # awb -> its freight lines that two unranked sources price differently
         missing = None
         for awb, lines in shipments(f.get("lines") or []).items():
             if not awb:
@@ -660,19 +766,25 @@ def overcharges(w: World, out: list[dict]):
                 if res["kind"] == "conflict":
                     amts = []
                     for s in (res["a"], res["b"]):
-                        a, e = pr.freight({**s, "msa_rows": (res["msa"] or {}).get("rows")}, cw)
+                        a, e = pr.freight({**s, "msa_rows": (res["msa"] or {}).get("rows"),
+                                           "msa_ref": (res["msa"] or {}).get("ref")}, cw)
                         amts.append((a, e, s))
                     if any(a is None for a, _, _ in amts):
                         continue
                     if amts[0][0] != amts[1][0]:
-                        conflict = {"amts": amts, "line": ln, "clause": res.get("clause"), "pickup": pickup,
-                                    "pev": pev, "lane": lane}
+                        cf = conflicts.setdefault(awb, {"lines": [], "a": ZERO, "b": ZERO, "ev": [], "pickup": pickup,
+                                                        "pev": pev, "clause": res.get("clause"),
+                                                        "lane": (c.id, lane, c.period_of(pickup)),
+                                                        "fuel": [x for x, k in coded if k == FUEL]})
+                        cf["lines"].append(ln)
+                        cf["a"], cf["b"] = cf["a"] + amts[0][0], cf["b"] + amts[1][0]
+                        cf["ev"] += amts[0][1] + amts[1][1]
                         correct_frt[id(ln)] = None
-                        flags["lanes"].add((c.id, lane, c.period_of(pickup)))
                         continue
                     res = {"kind": "ok", "src": res["a"], "msa": res["msa"]}   # they agree: nothing to decide
                 src = res["src"]
-                amt, e = pr.freight({**src, "msa_rows": (res["msa"] or {}).get("rows")}, cw)
+                amt, e = pr.freight({**src, "msa_rows": (res["msa"] or {}).get("rows"),
+                                     "msa_ref": (res["msa"] or {}).get("ref")}, cw)
                 if amt is None:
                     continue
                 correct_frt[id(ln)] = amt
@@ -681,8 +793,8 @@ def overcharges(w: World, out: list[dict]):
                     flags["learned"] = res["fb"]
                 if src["level"] > 2:
                     flags["levels"] = False
-                flags["lanes"].add((c.id, lane, c.period_of(pickup)))
                 if billed is not None and billed != amt:
+                    flags["lanes"].add((c.id, lane, c.period_of(pickup)))
                     diffs.append(billed - amt)
                     ev += [cite(ref, ln)] + e + pev + [cite(c.ref, c.clause("pricing_date"), "text_src")]
                     flags["pickup"].add(psrc)
@@ -693,18 +805,26 @@ def overcharges(w: World, out: list[dict]):
             if frt and all(id(ln) in correct_frt for ln in frt):
                 vals = [correct_frt[id(ln)] for ln in frt]
                 base_frt = None if any(v is None for v in vals) else sum(vals, ZERO)
+            once = set()
             for ln, code in coded:
                 billed = D(ln.get("amount"))
                 if billed is None or code in (None, FREIGHT) or code in NOT_PRICED:
                     continue
                 correct, e = line_correct(w, pr, c, code, ln, awb, pickup, base_frt, lines)
+                if correct is not None and code in once and c.acc.get(code, {}).get("unit") == "per_shipment":
+                    correct = ZERO                  # a per-shipment fee billed a second time for the same shipment
+                once.add(code)
                 if correct is None:
                     continue
                 if billed > correct:
                     diffs.append(billed - correct)
                     ev += [cite(ref, ln)] + e
+                    flags["pickup"].add(psrc)       # every line is priced as at the pickup date
+                    if any(x["doc"] == i["ref"] and i["received"] > copy["received"]
+                           for x in e for i in w.instruments_for(c)):
+                        flags["retro"] = True       # a term that arrived after the invoice made it wrong
                     if code == FUEL:
-                        flags["pickup"].add(psrc)
+                        flags["lanes"].add((c.id, lane, c.period_of(pickup)))
                         ev += pev
         if missing:
             out.append(item("overcharge", {"invoice_id": inv_id}, "cannot_determine",
@@ -713,24 +833,25 @@ def overcharges(w: World, out: list[dict]):
                             contract=c, outbound=True, safe=True, lanes=flags["lanes"]))
             continue
         pos = sum((d for d in diffs if d > 0), ZERO)
-        if conflict:
-            ln = conflict["line"]
-            billed_f = D(ln.get("amount"))
-            fuel_lines = [x for x in shipments(f.get("lines") or [])[(ln.get("awb") or "").strip().upper()]
-                          if c.code_of(x.get("description")) == FUEL]
-            pct, fev = pr.fuel_pct(conflict["pickup"])
-            billed_total = billed_f + sum((D(x.get("amount")) or ZERO for x in fuel_lines), ZERO)
-            totals = []
-            for a, e, s in conflict["amts"]:
-                fuel = rhu(pct / 100 * a) if (pct is not None and fuel_lines) else ZERO
-                totals.append(a + fuel)
-            lo, hi = max(ZERO, billed_total - max(totals)), billed_total - min(totals)
-            if hi + pos > 0:
-                (a1, e1, s1), (a2, e2, s2) = conflict["amts"]
-                ev2 = [cite(ref, ln)] + e1 + e2 + [conflict["clause"]] + conflict["pev"]
-                out.append(item("overcharge", {"invoice_id": inv_id}, "conflict", rng=(lo + pos, hi + pos),
-                                evidence=ev2, contract=c, outbound=False, lanes=flags["lanes"],
-                                learned=flags["learned"]))
+        billed, by_lane, ev2 = ZERO, {}, []
+        for cf in conflicts.values():
+            pct, _ = pr.fuel_pct(cf["pickup"])
+            fuel = cf["fuel"] if pct is not None else []
+            billed += sum((D(x.get("amount")) or ZERO for x in cf["lines"] + fuel), ZERO)
+            g = by_lane.setdefault(cf["lane"], [ZERO, ZERO])     # each lane is its own decision
+            g[0] += cf["a"] + (rhu(pct / 100 * cf["a"]) if fuel else ZERO)
+            g[1] += cf["b"] + (rhu(pct / 100 * cf["b"]) if fuel else ZERO)
+            ev2 += [cite(ref, x) for x in cf["lines"]] + cf["ev"] + [cf["clause"]] + cf["pev"]
+        hi_c, lo_c = sum((max(g) for g in by_lane.values()), ZERO), sum((min(g) for g in by_lane.values()), ZERO)
+        if conflicts and billed > lo_c:         # billed below both answers: the ambiguity changes nothing
+            ulo, fxev = to_usd(pr, f, max(ZERO, billed - hi_c) + pos)
+            uhi, _ = to_usd(pr, f, billed - lo_c + pos)
+            if ulo is None:
+                out.append(missing_fx(pr, inv_id, "overcharge", ref, f))
+            else:
+                out.append(item("overcharge", {"invoice_id": inv_id}, "conflict", rng=(ulo, uhi), evidence=ev2 + fxev,
+                                contract=c, outbound=False, lanes=set(by_lane), learned=flags["learned"],
+                                currency=f.get("currency")))
             continue
         if pos <= 0:
             continue
@@ -793,10 +914,22 @@ def line_correct(w: World, pr: Pricer, c: Contract, code: str, ln: dict, awb: st
     qty = D(ln.get("quantity"))
     if code == FUEL:
         pct, ev = pr.fuel_pct(pickup)
-        base = base_frt
-        if pct is None or base is None:
-            return None, []
-        return rhu(pct / 100 * base), ev + cites(cite(c.ref, c.clause("fuel_rule")))
+        if pct is not None:
+            rule = c.f.get("fuel_rule") or {}
+            inc = set(rule.get("applies_to") or [FREIGHT])
+            base = base_frt if FREIGHT in inc else ZERO
+            if base is None:
+                return None, []
+            for part in lines:
+                part_code = c.code_of(part.get("description"))
+                if part_code in inc - {FREIGHT, FUEL}:
+                    correct, pev = line_correct(w, pr, c, part_code, part, awb, pickup, base_frt, lines)
+                    if correct is None:
+                        return None, []
+                    base += correct
+                    ev += pev
+            return rhu(pct / 100 * base), ev + cites(cite(c.ref, rule))
+        # Some carriers bill fuel as a monetary rate per printed quantity, not as a percentage.
     fee, a, ev = pr.accessorial(code, pickup)
     if fee is None:
         return None, []
@@ -844,7 +977,7 @@ def line_correct(w: World, pr: Pricer, c: Contract, code: str, ln: dict, awb: st
         return fee, ev
     if unit == "per_shipment":
         return fee, ev
-    if unit in ("per_kg", "per_day", "per_month"):
+    if unit in ("per_kg", "per_lb", "per_cwt", "per_piece", "per_container", "per_day", "per_month"):
         return (rhu(fee * qty) if qty is not None else None), ev
     return None, []
 
@@ -859,9 +992,9 @@ def duplicates(w: World, out: list[dict]):
         for ln in f.get("lines") or []:
             code = code_from(codes, ln.get("description")) if codes else None
             code = code or norm_label(re.sub(r"\([^)]*\)", " ", str(ln.get("description"))))
-            if code in NOT_PRICED or ln.get("late_fee"):
+            if code in (LATE, "TAX") or ln.get("late_fee"):
                 continue
-            ident = (ln.get("awb") or "").strip().upper() or (f"period:{ln.get('period')}" if ln.get("period") else "")
+            ident = norm_awb(ln.get("awb")) or (f"period:{ln.get('period')}" if ln.get("period") else "")
             if not ident:
                 continue
             seen[(ident, code, D(ln.get("amount")))].append(
@@ -872,8 +1005,9 @@ def duplicates(w: World, out: list[dict]):
             continue
         hits.sort(key=lambda h: (h[0], h[1], h[2]))
         for h in hits[1:]:
-            first = hits[0]
-            dup_lines[h[2]].append((h, first))
+            once = h[3].get("awb") and h[5] and h[5].acc.get(k[1], {}).get("unit") == "per_shipment"
+            if h[2] != hits[0][2] or not once:
+                dup_lines[h[2]].append((h, hits[0]))
     for inv_id, pairs in dup_lines.items():
         h0 = pairs[0][0]
         c, f, ref = h0[5], h0[6], h0[4]
@@ -885,7 +1019,7 @@ def duplicates(w: World, out: list[dict]):
         ev = []
         for h, first in pairs:
             ev += [cite(first[4], first[3]), cite(h[4], h[3])]
-        pr = Pricer(w, c) if c else None
+        pr = Pricer(w, c, inv_id) if c else None
         usd, fxev = to_usd(pr, f, amount) if pr else (rhu(amount), [])
         if usd is None:
             out.append(missing_fx(pr, inv_id, "duplicate", ref, f))
@@ -905,7 +1039,7 @@ def duplicates(w: World, out: list[dict]):
         paid = day(row.get("paid_date"))
         for again in all_copies[1:]:
             asks = str(again["email"].get("requests_payment")).lower() == "yes" and not yes(again["f"].get("marked_copy"))
-            if not asks or (paid and paid > again["received"]):
+            if not asks or (row.get("status") == "paid" and paid and paid > again["received"]):
                 continue
             f = again["f"]
             c = w.contract_for(f.get("contract_id"))
@@ -913,15 +1047,16 @@ def duplicates(w: World, out: list[dict]):
             row, rref = w.register_row(inv_id, lambda r: r.get("status") in ("paid", "scheduled")) or (row, rref)
             if total is None:
                 continue
-            usd, fxev = to_usd(Pricer(w, c), f, total) if c else (rhu(total), [])
+            usd, fxev = to_usd(Pricer(w, c, inv_id), f, total) if c else (rhu(total), [])
             if usd is None:
-                out.append(missing_fx(Pricer(w, c), inv_id, "duplicate", again["ref"], f))
+                out.append(missing_fx(Pricer(w, c, inv_id), inv_id, "duplicate", again["ref"], f))
                 break
             out.append(item("duplicate", {"invoice_id": inv_id}, "finding", amount=usd,
                             evidence=[cite(rref, row), email_line(w, again, inv_id),
                                       cite(again["ref"], f, "total_src"),
                                       cite(copy["ref"], copy["f"], "number_src")] + fxev,
-                            contract=c, outbound=True, safe=True, currency=f.get("currency"), native=total))
+                            contract=c, outbound=True, safe=True, currency=f.get("currency"), native=total,
+                            resend=True))
             break
 
 
@@ -938,14 +1073,22 @@ def email_line(w: World, doc: dict, inv_id: str) -> dict | None:
 
 
 def credit_against(w: World, inv_ids: list[str], lines: list[dict]) -> Decimal:
-    """Credit notes that reverse what was billed twice: credited in full leaves nothing, in part reduces it."""
+    """Credit notes that reverse what was billed twice: credited in full leaves nothing, in part reduces it. A credit
+    note with lines counts only its lines on the duplicated waybills; one without counts when it names the invoice."""
     total = ZERO
-    awbs = {(ln.get("awb") or "").upper() for ln in lines}
+    awbs = {norm_awb(ln.get("awb")) for ln in lines} - {""}
     for cn in w.credit_notes:
-        refs = {norm_inv(x) for x in cn.get("invoice_numbers") or []}
-        if refs & set(inv_ids) or any((x.get("awb") or "").upper() in awbs for x in cn.get("lines") or []):
-            if cn.get("credit_type") in ("dispute", "other", None):
-                total += abs(D(cn.get("total")) or ZERO)
+        if cn.get("credit_type") not in ("dispute", "other", None):
+            continue
+        cls = cn.get("lines") or []
+        hit = [x for x in cls if norm_awb(x.get("awb")) in awbs]
+        if hit:
+            # Cancellations print negative, some carriers print credits positive; a note mixing both counts net.
+            amts = [D(x.get("amount")) or ZERO for x in hit]
+            total += sum((abs(a) for a in amts), ZERO) if all(a <= 0 for a in amts) or all(a >= 0 for a in amts) \
+                else max(ZERO, -sum(amts, ZERO))
+        elif not any(x.get("awb") for x in cls) and {norm_inv(x) for x in cn.get("invoice_numbers") or []} & set(inv_ids):
+            total += abs(D(cn.get("total")) or ZERO)
     return total
 
 
@@ -958,29 +1101,34 @@ def waived(w: World, out: list[dict]):
             continue
         for ln in f.get("lines") or []:
             code = c.code_of(ln.get("description"))
-            awb = (ln.get("awb") or "").strip().upper()
+            awb = norm_awb(ln.get("awb"))
             when = day(ln.get("date")) or day(f.get("invoice_date"))
             for wv in w.waivers:
-                if not wv_covers(c, wv, code, awb, ln, when):
+                name = wv.get("written_by_name") or wv["meta"]["from_name"]
+                one_off = one_off_for(w, c, inv_id, name, ln.get("period") or (month_of(when) if when else None),
+                                      norm_lane(ln.get("lane"))) \
+                    if code and c.code_loose(wv.get("charge")) == code else None
+                if not (wv_covers(c, wv, code, awb, ln, when, inv_id) or one_off) or w.aimed_at_machines(wv["ref"], wv):
                     continue
                 st = per_inv.setdefault(inv_id, {"amt": ZERO, "ev": [], "f": f, "ref": ref, "c": c, "verdicts": set(),
                                                  "missing": None, "learned": None})
                 email = wv.get("written_by_email") or (None if yes(wv.get("quoted_only")) else wv["meta"]["from_addr"])
-                name = wv.get("written_by_name") or wv["meta"]["from_name"]
-                one_off = one_off_for(w, inv_id, name, ln.get("period") or (month_of(when) if when else None))
                 ok, sch, fb = w.authorised(c, "waivers", email, name, day(wv.get("written_on")) or wv["received"],
-                                           c.carrier)
+                                           c.carrier, {inv_id}, lane=norm_lane(ln.get("lane")))
                 if one_off:
                     ok, fb = True, one_off
-                if not ok:
-                    continue
                 if yes(wv.get("quoted_only")) and not original_held(w, wv) and not one_off:
-                    holder = c.holder("waivers") if sch else c.kam()
-                    st["missing"] = {"name": f"original email from {name}" + (f" dated {wv['written_on']}" if
+                    p = next((p for p in c.persons if "waivers" in (p.get("categories") or [])
+                              and norm_label(p.get("name")) == norm_label(name)), None)
+                    holder = {"party": p.get("party"), "person": p.get("name"), "role": p.get("title")} if p \
+                        else c.kam()
+                    st["missing"] = {"name": f"original waiver email from {name}" + (f" dated {wv['written_on']}" if
                                                                              wv.get("written_on") else "")
                                      + f" waiving the {wv.get('charge')}" + (f" on AWB {awb}" if awb else ""),
                                      "holder": holder}
                     st["ev"] += [cite(wv["ref"], wv), cite(ref, ln)]
+                    continue
+                if not ok:
                     continue
                 if not condition_met(w, wv):
                     continue
@@ -996,9 +1144,9 @@ def waived(w: World, out: list[dict]):
                 break
     for inv_id, st in per_inv.items():
         if st["amt"] > 0:
-            usd, fxev = to_usd(Pricer(w, st["c"]), st["f"], st["amt"])
+            usd, fxev = to_usd(Pricer(w, st["c"], inv_id), st["f"], st["amt"])
             if usd is None:
-                out.append(missing_fx(Pricer(w, st["c"]), inv_id, "waived_but_billed", st["ref"], st["f"]))
+                out.append(missing_fx(Pricer(w, st["c"], inv_id), inv_id, "waived_but_billed", st["ref"], st["f"]))
                 continue
             out.append(item("waived_but_billed", {"invoice_id": inv_id}, "finding", amount=usd,
                             evidence=st["ev"] + fxev, contract=st["c"], outbound=True, safe=True,
@@ -1008,26 +1156,27 @@ def waived(w: World, out: list[dict]):
                             missing=st["missing"], contract=st["c"], outbound=True, safe=True))
 
 
-def wv_covers(c: Contract, wv: dict, code: str | None, awb: str, ln: dict, when: date | None) -> bool:
+def wv_covers(c: Contract, wv: dict, code: str | None, awb: str, ln: dict, when: date | None, inv_id=None) -> bool:
     """A waiver covers exactly the charge and the shipments or months it names (clause 11.2)."""
     if code is None or c.code_loose(wv.get("charge")) != code:
         return False
-    awbs = {a.strip().upper() for a in wv.get("awbs") or []}
+    awbs = {norm_awb(a) for a in wv.get("awbs") or []}
     months = set(wv.get("months") or [])
-    if awbs:
-        return awb in awbs
-    if months:
-        per = ln.get("period") or (month_of(when) if when else None)
-        return per in months
-    return False
+    invoices = {norm_inv(n) for n in wv.get("invoice_numbers") or []}
+    per = ln.get("period") or (month_of(when) if when else None)
+    return bool(awbs or months or invoices) and (not awbs or awb in awbs) and (not months or per in months) \
+        and (not invoices or inv_id in invoices)
 
 
-def one_off_for(w: World, inv_id: str, person: str, month: str | None) -> dict | None:
-    for fb in w.feedback:
+def one_off_for(w: World, c: Contract, inv_id: str, person: str, month: str | None, lane=None) -> dict | None:
+    for fb in reversed(w.feedback):
         fact = fb.get("fact") or {}
         if fb.get("decision") == "one_off_approval" and fact.get("type") == "waiver_scope" and \
-                norm_inv((fb.get("finding_key") or {}).get("invoice_id")) == inv_id and \
-                norm_label((fact.get("subject") or {}).get("person")) == norm_label(person):
+                norm_label((fact.get("subject") or {}).get("person")) == norm_label(person) and feedback_matches(
+                    fb, None, contract_id=c.id, lane=lane, person=person, party=c.carrier, category="waivers",
+                    invoice_id=inv_id, period=month, **{"class": "waived_but_billed"}):
+            if (fact.get("subject") or {}).get("party") not in (None, c.carrier):
+                continue
             months = (fact.get("value") or {}).get("months") or []
             if not months or month in months:
                 return fb
@@ -1040,7 +1189,8 @@ def original_held(w: World, wv: dict) -> bool:
         if o is wv or yes(o.get("quoted_only")):
             continue
         if norm_label(o["meta"]["from_name"]) == norm_label(wv.get("written_by_name")) and \
-                set(map(str.upper, o.get("awbs") or [])) == set(map(str.upper, wv.get("awbs") or [])) and \
+                set(map(norm_awb, o.get("awbs") or [])) == set(map(norm_awb, wv.get("awbs") or [])) and \
+                set(o.get("months") or []) == set(wv.get("months") or []) and \
                 norm_label(o.get("charge")) == norm_label(wv.get("charge")):
             return True
     return False
@@ -1057,48 +1207,66 @@ def condition_met(w: World, wv: dict) -> bool:
     return False                      # a condition we can't check is not met
 
 
-def late_fees(w: World, out: list[dict]):
+def late_fees(w: World, out: list[dict], disputed: dict[str, Decimal]):
+    """Late fees billed on an invoice that wasn't late enough to owe them. Every fee billed on one target invoice, on
+    whichever invoices carry it, is measured against what the target owes in total; the excess lands on the invoice
+    that billed it (so month 2 billed on its own later invoice is caught)."""
+    by_tgt: dict[str, list] = defaultdict(list)
     for inv_id, (copy, _) in invoice_copies(w).items():
-        f, ref = copy["f"], copy["ref"]
-        c = w.contract_for(f.get("contract_id"))
+        c = w.contract_for(copy["f"].get("contract_id"))
         if c is None:
             continue
-        by_target: dict[str, list] = defaultdict(list)
-        for ln in f.get("lines") or []:
-            lf = ln.get("late_fee") or {}
-            if lf.get("on_invoice") or c.code_of(ln.get("description")) == LATE:
-                tgt = norm_inv(lf.get("on_invoice") or "")
-                if tgt:
-                    by_target[tgt].append(ln)
-        total, ev, learned_fb = ZERO, [], None
-        for tgt, lines in by_target.items():
-            billed = sum((D(ln.get("amount")) or ZERO for ln in lines), ZERO)
-            row, rref = w.register_row(tgt)
-            if not row:
+        lines: dict[str, list] = defaultdict(list)
+        for ln in copy["f"].get("lines") or []:
+            tgt = norm_inv((ln.get("late_fee") or {}).get("on_invoice"))
+            if tgt and (ln.get("late_fee") or c.code_of(ln.get("description")) == LATE):
+                lines[tgt].append(ln)
+        for tgt, lns in lines.items():
+            by_tgt[tgt].append((day(copy["f"].get("invoice_date")) or date.min, inv_id, copy, c, lns))
+    per_inv: dict[str, dict] = {}
+    for tgt, bills in by_tgt.items():
+        row, rref = w.register_row(tgt)
+        paid = day((row or {}).get("paid_date"))
+        if not paid:
+            continue
+        bills.sort(key=lambda b: (b[0], b[1]))
+        printed = D((bills[0][4][0].get("late_fee") or {}).get("overdue_amount"))
+        base = printed if printed is not None else D(row.get("amount"))
+        principal = base - disputed.get(tgt, ZERO) if base is not None else None
+        cum = ZERO
+        for _, inv_id, copy, c, lns in bills:
+            due, xev, fb = w.due_date(tgt, c, day(row.get("due_date")), {inv_id}, "late_fee_not_owed")
+            sched = fee_schedule(c, principal, due, paid)
+            billed = sum((D(ln.get("amount")) or ZERO for ln in lns), ZERO)
+            months = [(ln.get("late_fee") or {}).get("month_number") for ln in lns]
+            if sched is None:
+                extra = ZERO
+            elif all(isinstance(m, int) and m > 0 for m in months):      # each billed month against its own fee
+                extra = billed - sum((sched[m - 1] if m <= len(sched) else ZERO for m in months), ZERO)
+            else:
+                owed = sum(sched, ZERO)
+                extra = max(ZERO, cum + billed - owed) - max(ZERO, cum - owed)
+            cum += billed
+            if extra <= 0:
                 continue
-            paid = day(row.get("paid_date"))
-            if not paid:
-                continue
-            due, xev, fb = w.due_date(tgt, c, day(row.get("due_date")))
-            principal = D((lines[0].get("late_fee") or {}).get("overdue_amount")) or D(row.get("amount"))
-            correct = fee_owed(c, principal, due, paid)
-            if correct is None:
-                continue
-            if billed > correct:
-                total += billed - correct
-                ev += [cite(ref, ln) for ln in lines] + [cite(rref, row)] + xev + \
-                      [cite(c.ref, c.clause("late_fee"))] + ([cite(c.ref, c.clause("extension"))] if xev else [])
-                learned_fb = learned_fb or fb
-        if total > 0:
-            usd, fxev = to_usd(Pricer(w, c), f, total)
-            if usd is None:
-                out.append(missing_fx(Pricer(w, c), inv_id, "late_fee_not_owed", ref, f))
-                continue
-            out.append(item("late_fee_not_owed", {"invoice_id": inv_id}, "finding", amount=usd, evidence=ev + fxev,
-                            contract=c, outbound=True, safe=True, learned=learned_fb, currency=f.get("currency"), native=total))
+            st = per_inv.setdefault(inv_id, {"amt": ZERO, "ev": [], "fb": None, "copy": copy, "c": c})
+            st["amt"] += extra
+            st["ev"] += [cite(copy["ref"], ln) for ln in lns] + [cite(rref, row)] + xev + \
+                [cite(c.ref, c.clause("late_fee"))] + ([cite(c.ref, c.clause("extension"))] if xev else [])
+            st["fb"] = st["fb"] or fb
+    for inv_id, st in per_inv.items():
+        f, c = st["copy"]["f"], st["c"]
+        usd, fxev = to_usd(Pricer(w, c, inv_id), f, st["amt"])
+        if usd is None:
+            out.append(missing_fx(Pricer(w, c, inv_id), inv_id, "late_fee_not_owed", st["copy"]["ref"], f))
+            continue
+        out.append(item("late_fee_not_owed", {"invoice_id": inv_id}, "finding", amount=usd, evidence=st["ev"] + fxev,
+                        contract=c, outbound=True, safe=True, learned=st["fb"], currency=f.get("currency"),
+                        native=st["amt"]))
 
 
-def fee_owed(c: Contract, principal: Decimal | None, due: date | None, paid: date) -> Decimal | None:
+def fee_schedule(c: Contract, principal: Decimal | None, due: date | None, paid: date) -> list[Decimal] | None:
+    """Each month's fee owed: none within grace, else ceil(days late / 30) months on a simple or compounding base."""
     lf = c.clause("late_fee")
     r, grace = D(lf.get("percent_per_month")), lf.get("grace_days") or 0
     per = lf.get("days_per_month") or 30
@@ -1106,15 +1274,13 @@ def fee_owed(c: Contract, principal: Decimal | None, due: date | None, paid: dat
         return None
     late = (paid - due).days
     if late <= int(grace):
-        return ZERO
-    n = math.ceil(late / per)
-    total, base = ZERO, principal
-    for _ in range(n):
-        fee = rhu(r / 100 * base)
-        total += fee
+        return []
+    fees, base = [], principal
+    for _ in range(math.ceil(late / per)):
+        fees.append(rhu(r / 100 * base))
         if lf.get("compounding"):
-            base += fee
-    return total
+            base += fees[-1]
+    return fees
 
 
 def late_fee_risk(w: World, out: list[dict], disputed: dict[str, Decimal]):
@@ -1125,7 +1291,7 @@ def late_fee_risk(w: World, out: list[dict], disputed: dict[str, Decimal]):
             if inv_id in seen:
                 continue
             seen.add(inv_id)
-            if row.get("status") != "open":
+            if row.get("status") not in ("open", "disputed") or day(row.get("paid_date")):
                 continue
             copy = (w.invoices.get(inv_id) or [None])[0]
             f = copy["f"] if copy else {"currency": row.get("currency"), "invoice_date": row.get("invoice_date")}
@@ -1133,14 +1299,14 @@ def late_fee_risk(w: World, out: list[dict], disputed: dict[str, Decimal]):
                                                          else None)
             if c is None:
                 continue
-            due, xev, fb = w.due_date(inv_id, c, day(row.get("due_date")))
+            due, xev, fb = w.due_date(inv_id, c, day(row.get("due_date")), {inv_id}, "late_fee_risk")
             if due is None or not 0 < (due - w.as_of).days <= 14:
                 continue
             r = D(c.clause("late_fee").get("percent_per_month"))
             principal = D(row.get("amount"))
             if r is None or principal is None:
                 continue
-            principal -= disputed.get(inv_id, ZERO)
+            principal = max(ZERO, principal - disputed.get(inv_id, ZERO))
             fee = rhu(r / 100 * principal)
             usd, fxev = to_usd(Pricer(w, c), {**f, "currency": row.get("currency") or f.get("currency")}, fee)
             if usd is None:
@@ -1150,110 +1316,230 @@ def late_fee_risk(w: World, out: list[dict], disputed: dict[str, Decimal]):
                             contract=c, outbound=False, learned=fb))
 
 
+def tier_rebate(rb: dict, spend: Decimal) -> Decimal:
+    """The rebate a spend earns: the reached tier's rate on all of it, or band by band when the contract says so."""
+    ts = sorted(rb.get("tiers") or [], key=lambda t: D(t["min_spend"]))
+    if rb.get("whole_spend_at_tier") is False:
+        return rhu(sum((D(t["percent"]) / 100 * ((min(spend, D(n["min_spend"])) if n else spend) - D(t["min_spend"]))
+                        for t, n in zip(ts, ts[1:] + [None]) if spend > D(t["min_spend"])), ZERO))
+    return rhu(max((D(t["percent"]) for t in ts if spend >= D(t["min_spend"])), default=ZERO) / 100 * spend)
+
+
+def fx_unknown(w: World, c: Contract, key: dict, ev: list) -> dict:
+    """A cashback key whose INR amounts have no exchange rate for their month: ask Treasury for it."""
+    m = Pricer(w, c).fx_missing()
+    return item("cashback", key, "cannot_determine", evidence=[m.pop("_cite")] + ev, missing=m, contract=c,
+                outbound=True, safe=True)
+
+
 def cashback(w: World, out: list[dict]):
     for c in w.contracts.values():
         qs_cl = c.clause("qualifying_spend")
-        rb, ic = c.clause("rebate"), c.clause("improvement_credit")
-        if rb.get("applies") and rb.get("tiers"):
-            for q in quarters(c, w.as_of):
-                first, last = quarter_bounds(q)
-                spend, ev, ok = qualifying(w, c, first, last)
-                if not ok:
-                    continue
-                pct, tier_ev = ZERO, None
-                for t in sorted(rb["tiers"], key=lambda t: D(t["min_spend"])):
-                    if spend >= D(t["min_spend"]):
-                        pct = D(t["percent"])
-                if pct <= 0:
-                    continue
-                earned = rhu(pct / 100 * spend)
-                due = last + timedelta(days=int(rb.get("credit_due_days") or 0))
-                add_credit(w, out, c, q, "rebate", earned, due, ev + [cite(c.ref, rb), cite(c.ref, qs_cl)])
-        if ic.get("applies") and D(ic.get("percent")) and c.effective:
-            n = 1
-            while True:
-                a, b = add_years(c.effective, n - 1), add_years(c.effective, n) - timedelta(days=1)
-                if b >= w.as_of or (c.end and a > c.end):
-                    break
-                spend, ev, ok = qualifying(w, c, a, b)
-                if ok:
-                    earned = rhu(D(ic["percent"]) / 100 * spend)
-                    due = b + timedelta(days=1) + timedelta(days=int(ic.get("due_days_after_anniversary") or 0))
+        rb, ic, oc = c.clause("rebate"), c.clause("improvement_credit"), c.cl.get("other_credits") or []
+        tiers = bool(rb.get("applies") and rb.get("tiers"))
+        annual = tiers and rb.get("period") == "contract_year"   # an annual rebate is a promised credit per year
+        end = term_end(w, c)
+        for q in (quarters(c, w.as_of, end) if tiers and not annual else []):
+            first, last = quarter_bounds(q)
+            spend, ev, ok = qualifying(w, c, first, last)
+            if ok is None:
+                out.append(fx_unknown(w, c, {"contract_id": c.id, "period": q, "credit_type": "rebate"},
+                                      [cite(c.ref, qs_cl)]))
+            earned = tier_rebate(rb, spend) if ok else ZERO
+            if earned > 0:
+                add_credit(w, out, c, q, "rebate", earned, last + timedelta(days=int(rb.get("credit_due_days") or 0)),
+                           ev + [cite(c.ref, rb), cite(c.ref, qs_cl)])
+        if not ((ic.get("applies") and D(ic.get("percent"))) or oc or annual) or not c.effective:
+            continue
+        n = 1
+        while (b := add_years(c.effective, n) - timedelta(days=1)) < w.as_of and \
+                not (end and add_years(c.effective, n - 1) > end):
+            applicable = [o for o in oc if not o.get("contract_years") or n in o["contract_years"]]
+            needs_spend = annual or bool(ic.get("applies") and D(ic.get("percent"))) or any(
+                D(o.get("amount")) is None and D(o.get("percent")) is not None for o in applicable)
+            spend, ev, ok = qualifying(w, c, add_years(c.effective, n - 1), b) if needs_spend else (ZERO, [], True)
+            if ok is None:
+                out.append(fx_unknown(w, c, {"contract_id": c.id, "period": f"CY{n}", "credit_type": "promised_credit"},
+                                      [cite(c.ref, qs_cl)]))
+            else:
+                anniv = lambda x: 1 + int(x or 0)          # due days counted from the anniversary
+                parts = ([(rhu(D(ic["percent"]) / 100 * spend), anniv(ic.get("due_days_after_anniversary")), ic)]
+                         if ic.get("applies") and D(ic.get("percent")) else []) + \
+                        ([(tier_rebate(rb, spend), int(rb.get("credit_due_days") or 0), rb)] if annual else []) + \
+                        [(D(o["amount"]) if D(o.get("amount")) is not None else
+                          rhu((D(o.get("percent")) or ZERO) / 100 * spend),
+                          anniv(o.get("due_days_after_anniversary")), o) for o in applicable]
+                earned = sum((p[0] for p in parts), ZERO)
+                if earned > 0:
+                    due = b + timedelta(days=max(p[1] for p in parts))
                     add_credit(w, out, c, f"CY{n}", "promised_credit", earned, due,
-                               ev + [cite(c.ref, ic), cite(c.ref, qs_cl)])
-                n += 1
+                               ev + [cite(c.ref, p[2]) for p in parts] + [cite(c.ref, qs_cl)])
+            n += 1
 
 
-def quarters(c: Contract, as_of: date) -> list[str]:
-    if not c.effective:
-        return []
+def term_end(w: World, c: Contract) -> date | None:
+    """The contract's end date, moved by any signed extension."""
+    ends = [x for x in [c.end] + [day(i.get("new_end_date")) for i in w.instruments_for(c) if i.get("signed_by_both")]
+            if x]
+    return max(ends) if ends else None
+
+
+def quarters(c: Contract, as_of: date, end: date | None = None) -> list[str]:
+    """Every calendar quarter of the term that has closed by as_of."""
     out, d = [], c.effective
-    while d <= as_of:
+    while d and d <= as_of and (not end or d <= end):
         q = quarter_of(d)
-        first, last = quarter_bounds(q)
-        if last < as_of and (not c.end or first <= c.end):
+        if quarter_bounds(q)[1] < as_of:
             out.append(q)
-        d = last + timedelta(days=1)
+        d = quarter_bounds(q)[1] + timedelta(days=1)
     return out
+
+
+def contract_invoices(w: World, c: Contract, first: date, last: date) -> list[dict]:
+    """This contract's invoices dated in [first, last], oldest first."""
+    hits = [(day(cp["f"].get("invoice_date")), k, cp) for k, (cp, _) in invoice_copies(w).items()
+            if str(cp["f"].get("contract_id") or "").upper() == c.id.upper()]
+    return [cp for d, _, cp in sorted(h for h in hits if h[0] and first <= h[0] <= last)]
+
+
+def invoice_spend(c: Contract, pr: Pricer, f: dict) -> Decimal | None:
+    """One invoice's Qualifying Spend in USD, as the contract defines it; None when its INR has no exchange rate."""
+    cl = c.clause("qualifying_spend")
+    inc = {x.upper() for x in cl.get("include_codes") or []} or {FREIGHT, FUEL, SECURITY}
+    exc = {x.upper() for x in cl.get("exclude_codes") or []} | {"TAX", "DUTY", LATE}
+    s = ZERO
+    for ln in f.get("lines") or []:
+        code = c.code_of(ln.get("description"))
+        if code is None or code in exc or ln.get("late_fee"):
+            continue
+        if code in inc or (cl.get("include_annex_d", True) and code in c.acc):
+            s += D(ln.get("amount")) or ZERO
+    if str(f.get("currency") or "USD").upper().startswith("INR"):
+        rate, _ = pr.fx(day(f.get("invoice_date")))
+        return rhu(s / rate) if rate else (ZERO if not s else None)
+    return s
 
 
 def qualifying(w: World, c: Contract, first: date, last: date):
     """Qualifying Spend in USD for invoices dated in [first, last], as the contract defines it."""
     cl = c.clause("qualifying_spend")
-    inc = {x.upper() for x in cl.get("include_codes") or []} or {FREIGHT, FUEL, SECURITY}
-    exc = {x.upper() for x in cl.get("exclude_codes") or []} | {"TAX", "DUTY", LATE}
     pr = Pricer(w, c)
     spend, ev, any_inv = ZERO, [], False
-    for inv_id, (copy, _) in invoice_copies(w).items():
-        f = copy["f"]
-        if str(f.get("contract_id") or "").upper() != c.id.upper():
-            continue
-        d = day(f.get("invoice_date"))
-        if not d or not first <= d <= last:
-            continue
-        s = ZERO
-        for ln in f.get("lines") or []:
-            code = c.code_of(ln.get("description"))
-            if code is None or code in exc or ln.get("late_fee"):
-                continue
-            if code in inc or (cl.get("include_annex_d", True) and code in c.acc):
-                s += D(ln.get("amount")) or ZERO
-        if str(f.get("currency") or "USD").upper().startswith("INR"):
-            rate, _ = pr.fx(d)
-            if not rate:
-                return ZERO, [], False
-            s = rhu(s / rate)
+    for cp in contract_invoices(w, c, first, last):
+        s = invoice_spend(c, pr, cp["f"])
+        if s is None:
+            return ZERO, [], None
         spend += s
+        ev += spend_evidence(c, pr, cp)
         any_inv = True
-    for cn in w.credit_notes:
-        d = day(cn.get("credit_date"))
-        if str(cn.get("contract_id") or "").upper() == c.id.upper() and d and first <= d <= last and \
-                cn.get("credit_type") not in ("rebate", "improvement") and cl.get("net_of_credit_notes", True):
-            amt = abs(D(cn.get("total")) or ZERO)
-            if str(cn.get("currency") or "USD").upper().startswith("INR"):
-                rate, _ = pr.fx(d)
-                amt = rhu(amt / rate) if rate else ZERO
-            spend -= amt
+    for cn in spend_credits(w, c, first, last):
+        amt = credit_spend(c, pr, cn)
+        if amt is None:
+            return ZERO, [], None
+        spend -= amt
+        ev += cites(cite(cn["ref"], cn, "total_src"))
     return spend, ev, any_inv
 
 
+def spend_evidence(c: Contract, pr: Pricer, cp: dict) -> list[dict]:
+    f = cp["f"]
+    ev = cites(*[cite(cp["ref"], ln) for ln in f.get("lines") or []])
+    if str(f.get("currency") or "USD").upper().startswith("INR"):
+        ev += pr.fx(day(f.get("invoice_date")))[1]
+    return ev
+
+
+def spend_credits(w: World, c: Contract, first: date, last: date) -> list[dict]:
+    if not c.clause("qualifying_spend").get("net_of_credit_notes", True):
+        return []
+    return [cn for cn in w.credit_notes if str(cn.get("contract_id") or "").upper() == c.id.upper() and
+            day(cn.get("credit_date")) and first <= day(cn["credit_date"]) <= last and
+            cn.get("credit_type") not in ("rebate", "improvement")]
+
+
+def credit_spend(c: Contract, pr: Pricer, cn: dict) -> Decimal | None:
+    # Credit totals may include taxes and duty. When coded lines are supplied, only eligible lines reduce spend.
+    lines = cn.get("lines") or []
+    if lines and all(c.code_of(ln.get("description")) is not None for ln in lines):
+        f = {"lines": [{**ln, "amount": str(abs(D(ln.get("amount")) or ZERO))} for ln in lines],
+             "currency": cn.get("currency"), "invoice_date": cn.get("credit_date")}
+        return invoice_spend(c, pr, f)
+    amt = abs(D(cn.get("total")) or ZERO)
+    if str(cn.get("currency") or "USD").upper().startswith("INR"):
+        rate, _ = pr.fx(day(cn.get("credit_date")))
+        return rhu(amt / rate) if rate else (ZERO if not amt else None)
+    return amt
+
+
+def margin_step_down(w: World, out: list[dict]):
+    """A handling margin that should have stepped down: once a quarter's Qualifying Spend reaches the threshold, every
+    later invoice that quarter is due the lower rate. One cashback item per quarter, never per-invoice overcharges."""
+    for c in w.contracts.values():
+        hm = c.clause("handling_margin")
+        hi, lo, cap = D(hm.get("percent")), D(hm.get("step_down_percent")), D(hm.get("step_down_after_spend"))
+        if not hm.get("applies") or None in (hi, lo, cap) or lo >= hi:
+            continue
+        pr = Pricer(w, c)
+        for q in quarters(c, w.as_of, term_end(w, c)):
+            first, last = quarter_bounds(q)
+            run, crossed, over, ev, unknown, gap = ZERO, False, ZERO, [], False, False
+            credits = sorted(spend_credits(w, c, first, last), key=lambda cn: day(cn["credit_date"]))
+            for cp in contract_invoices(w, c, first, last):
+                while credits and day(credits[0]["credit_date"]) <= day(cp["f"]["invoice_date"]):
+                    cn = credits.pop(0)
+                    reduction = credit_spend(c, pr, cn)
+                    gap, run = gap or reduction is None, run - (reduction or ZERO)
+                    ev += cites(cite(cn["ref"], cn, "total_src"))
+                lines = cp["f"].get("lines") or []
+                unknown = unknown or (gap and not crossed and any(c.code_of(x.get("description")) == "MARGIN"
+                                                                  for x in lines))
+                if crossed:                     # the crossing invoice itself keeps the old rate
+                    extra = ZERO
+                    for ln in lines:
+                        if c.code_of(ln.get("description")) != "MARGIN":
+                            continue
+                        awb = norm_awb(ln.get("awb"))
+                        base = D(ln.get("percent_base")) or sum(
+                            (D(x.get("amount")) or ZERO for x in lines if c.code_of(x.get("description")) == "COST"
+                             and norm_awb(x.get("awb")) == awb), ZERO)
+                        extra += max(ZERO, (D(ln.get("amount")) or ZERO) - rhu(lo / 100 * base))
+                        ev.append(cite(cp["ref"], ln))
+                    usd = to_usd(pr, cp["f"], extra)[0] if extra else ZERO
+                    unknown, over = unknown or usd is None, over + (usd or ZERO)
+                spend = invoice_spend(c, pr, cp["f"])
+                gap, run = gap or spend is None, run + (spend or ZERO)
+                crossed = crossed or (not gap and run >= cap)
+                ev += spend_evidence(c, pr, cp)
+            if unknown:
+                out.append(fx_unknown(w, c, {"contract_id": c.id, "period": q, "credit_type": "margin_step_down"},
+                                      [cite(c.ref, hm)]))
+            elif over > 0:                      # ponytail: claimable at quarter end; a contract credit date goes here
+                add_credit(w, out, c, q, "margin_step_down", over, last,
+                           ev + [cite(c.ref, hm), cite(c.ref, c.clause("qualifying_spend"))])
+
+
 def add_credit(w: World, out: list[dict], c: Contract, period: str, ctype: str, earned: Decimal, due: date, ev):
-    kind = {"rebate": "rebate", "promised_credit": "improvement", "margin_step_down": "margin"}[ctype]
+    kinds = {"rebate": ("rebate",), "promised_credit": ("improvement", "other", "rebate"),
+             "margin_step_down": ("margin",)}[ctype]
+    key = {"contract_id": c.id, "period": period, "credit_type": ctype}
     credited, cev = ZERO, []
     for cn in w.credit_notes:
-        if str(cn.get("contract_id") or "").upper() == c.id.upper() and cn.get("credit_type") == kind and \
+        if str(cn.get("contract_id") or "").upper() == c.id.upper() and cn.get("credit_type") in kinds and \
                 str(cn.get("period") or "").replace(" ", "").upper() == period.upper():
             amt = abs(D(cn.get("total")) or ZERO)
             if str(cn.get("currency") or "USD").upper().startswith("INR"):
                 rate, _ = Pricer(w, c).fx(day(cn.get("credit_date")))
-                amt = rhu(amt / rate) if rate else ZERO
+                if not rate:
+                    out.append(fx_unknown(w, c, key, ev + [cite(cn["ref"], cn, "total_src")]))
+                    return
+                amt = rhu(amt / rate)
             credited += amt
             cev.append(cite(cn["ref"], cn, "total_src"))
     owed = earned - credited
     if owed <= 0:
         return
-    out.append(item("cashback", {"contract_id": c.id, "period": period, "credit_type": ctype}, "finding",
-                    amount=owed, evidence=ev + cev, contract=c, outbound=w.as_of > due, safe=True, due=due))
+    out.append(item("cashback", key, "finding", amount=owed, evidence=ev + cev, contract=c, outbound=w.as_of >= due,
+                    safe=True, due=due))
 
 
 def expiry(w: World, out: list[dict]):
@@ -1265,35 +1551,56 @@ def expiry(w: World, out: list[dict]):
                 nd = c.end - timedelta(days=int(c.f["renewal_notice_days"]))
             when, ev = nd or when, ev + [cite(c.ref, c.f, "renewal_src")]
         for i in w.instruments_for(c):
-            if i.get("signed_by_both") and (day(i.get("new_notice_deadline")) or day(i.get("new_end_date"))):
-                when = day(i.get("new_notice_deadline")) or day(i.get("new_end_date"))
-                ev = [cite(i["ref"], i, "term_src")]
+            nd, end = day(i.get("new_notice_deadline")), day(i.get("new_end_date"))
+            if i.get("signed_by_both") and (nd or end):
+                if not nd and c.f.get("auto_renews") and c.f.get("renewal_notice_days"):
+                    nd = end - timedelta(days=int(c.f["renewal_notice_days"]))
+                when, ev = nd or end, [cite(i["ref"], i, "term_src"), cite(c.ref, c.f, "renewal_src")]
         if when and 0 <= (when - w.as_of).days <= 60:
             out.append(item("expiry", {"contract_id": c.id}, "finding", deadline=when, evidence=ev, contract=c,
                             outbound=False))
 
 
 # ---- feedback that closes, rejects or overrides a key -----------------------------------------------------------------
-def apply_decisions(w: World, items: list[dict]) -> list[dict]:
+def apply_decisions(w: World, items: list[dict], drop=("close", "reject")) -> list[dict]:
     keep = []
     for it in items:
         k = key_of(it)
-        drop = False
+        gone = False
         for fb in w.feedback:
             fk = fb.get("finding_key") or {}
             fkey = {**fk, "class": fk.get("class") or ("cashback" if "period" in fk else "expiry")}
             fkey["invoice_id"] = norm_inv(fk.get("invoice_id")) if fk.get("invoice_id") else None
             if key_of({**fkey, **({"invoice_id": fkey["invoice_id"]} if fkey.get("invoice_id") else {})}) != k:
                 continue
+            c = it.get("_contract")
+            copy = (w.invoices.get(it.get("invoice_id")) or [None])[0]
+            lines = copy["f"].get("lines") or [] if copy else []
+            lanes = {norm_lane(ln.get("lane")) for ln in lines if ln.get("lane")}
+            dates = [w.pickup(norm_awb(ln.get("awb")), ln, copy["ref"], c)[0] for ln in lines] if copy else []
+            on = next((d for d in dates if d), day(copy["f"].get("invoice_date")) if copy else None)
+            fact = fb.get("fact") or {}
+            person = (fact.get("value") or {}).get("sent_by")
+            context = {"contract_id": c.id if c else it.get("contract_id"), "party": c.carrier if c else None,
+                       "lane": next(iter(lanes)) if len(lanes) == 1 else None, "person": person,
+                       "category": {"overcharge": "rates", "waived_but_billed": "waivers",
+                                    "late_fee_not_owed": "payment_terms", "late_fee_risk": "payment_terms"}.get(it["class"]),
+                       **{field: it.get(field) for field in ("invoice_id", "class", "period", "credit_type")}}
+            if not feedback_matches(fb, on, **context):
+                continue
             dec = fb.get("decision")
-            if dec in ("close", "reject"):
-                drop = True
+            if dec in drop:
+                gone = True
             elif dec == "override_amount":
                 amt = D(((fb.get("fact") or {}).get("value") or {}).get("amount_usd"))
                 if amt is not None:
+                    gone = False
                     it["verdict"], it["amount_usd"], it["amount_range"] = "finding", money(amt), None
+                    it["_outbound"] = True
                     it["_learned"] = fb
-        if not drop:
+                    if str(it.get("_currency") or "USD").upper().startswith("USD"):
+                        it["_native"] = amt
+        if not gone:
             keep.append(it)
     return keep
 
@@ -1309,6 +1616,7 @@ def finish(w: World, items: list[dict], mode: str, prev: dict) -> list[dict]:
         if it["verdict"] == "conflict":
             open_lanes |= set(it.get("_lanes") or ())
     for it in items:
+        it["_safe"] = unattended_ready(w, it)
         it["action"] = action(it, mode, per_target[it.get("invoice_id") or key_of(it)], open_lanes)
         it["confidence"] = confidence(it)
         if it.get("_learned"):
@@ -1317,8 +1625,8 @@ def finish(w: World, items: list[dict], mode: str, prev: dict) -> list[dict]:
         k = key_of(it)
         old = prev.get(k)
         base = k
-        sig = (it["verdict"], it["amount_usd"], tuple(it["amount_range"] or ()))
-        if old and tuple(old["sig"]) == sig:
+        sig = [it["verdict"], it["amount_usd"], list(it["amount_range"] or [])]
+        if old and old["sig"] == sig:
             it["id"] = old["id"]
         elif old:
             n = int(old["id"].rsplit("#v", 1)[1]) + 1 if "#v" in old["id"] else 2
@@ -1328,6 +1636,32 @@ def finish(w: World, items: list[dict], mode: str, prev: dict) -> list[dict]:
             if it.get("_retro"):
                 it["retro"] = True
     return items
+
+
+def unattended_ready(w: World, it: dict) -> bool:
+    """Apply evidence, pickup and recipient checks to every outbound detector, not just repricing."""
+    c = it.get("_contract")
+    if not it.get("_safe") or not c or c.f.get("signed_by_both") is False or not it["evidence"]:
+        return False
+    if it["verdict"] == "cannot_determine":
+        holder = (it.get("missing_doc") or {}).get("holder") or {}
+        return any(p.get("email") and p.get("party") == holder.get("party") and
+                   norm_label(p.get("name")) == norm_label(holder.get("person")) for p in c.persons)
+    if not c.person("billing_disputes", c.carrier) or not c.person("billing_disputes", c.carrier).get("email"):
+        return False
+    copies = [invoice_copies(w)[it["invoice_id"]][0]] if it.get("invoice_id") in w.invoices else []
+    if it["class"] == "cashback":
+        period = it["period"]
+        first, last = quarter_bounds(period) if "-Q" in period else (
+            add_years(c.effective, int(period[2:]) - 1), add_years(c.effective, int(period[2:])) - timedelta(days=1))
+        copies = contract_invoices(w, c, first, last)
+    for cp in copies:
+        if norm_inv(cp["f"]["invoice_number"]) in w.arith_bad:
+            return False
+        for awb, lines in shipments(cp["f"].get("lines") or []).items():
+            if awb and w.pickup(awb, lines[0], cp["ref"], c)[1] not in ("tracking", "email"):
+                return False
+    return True
 
 
 def action(it: dict, mode: str, target_total: Decimal, open_lanes: set) -> str:
@@ -1347,7 +1681,8 @@ def action(it: dict, mode: str, target_total: Decimal, open_lanes: set) -> str:
         return "human_review"
     if mode != "autonomous":
         return "draft:" + remedy
-    safe = bool(it.get("_safe")) and not (set(it.get("_lanes") or ()) & open_lanes) and target_total < REVIEW_AT
+    safe = bool(it.get("_safe")) and not (set(it.get("_lanes") or ()) & open_lanes) and target_total < REVIEW_AT \
+        and (v != "cannot_determine" or bool(((it.get("missing_doc") or {}).get("holder") or {}).get("person")))
     return ("execute:" + remedy) if safe else "human_review"
 
 
@@ -1377,19 +1712,27 @@ def public(it: dict) -> dict:
     return {k: (sorted(v) if isinstance(v, set) else v) for k, v in it.items() if not k.startswith("_")}
 
 
+def disputed_by_invoice(items: list[dict]) -> dict[str, Decimal]:
+    """What we dispute on each invoice, in its own currency: it never enters a late-fee base."""
+    out: dict[str, Decimal] = defaultdict(lambda: ZERO)
+    for it in items:
+        if it["verdict"] == "finding" and it.get("invoice_id") and it.get("_outbound") and not it.get("_resend"):
+            out[it["invoice_id"]] += it.get("_native") or Decimal(it["amount_usd"])
+    return out
+
+
 # ---- the report -------------------------------------------------------------------------------------------------------
 def build(state: Path, as_of: date, mode: str, feedback: list[dict], prev: dict) -> dict:
     w = World(state, as_of, feedback)
     w.arith_bad = {k for k, (c, _) in invoice_copies(w).items() if arith_problems(c["f"])}
     items: list[dict] = []
-    for fn in (overcharges, duplicates, waived, late_fees):
+    for fn in (overcharges, duplicates, waived):
         fn(w, items)
-    disputed: dict[str, Decimal] = defaultdict(lambda: ZERO)
-    for it in items:                         # disputed amounts leave a late-fee principal, in its own currency
-        if it["verdict"] == "finding" and it.get("invoice_id") and it.get("_outbound"):
-            disputed[it["invoice_id"]] += it.get("_native") or Decimal(it["amount_usd"])
-    late_fee_risk(w, items, disputed)
+    items = apply_decisions(w, items, drop=("reject",))     # a rejected key is not disputed; a closed one stays settled
+    late_fees(w, items, disputed_by_invoice(items))
+    late_fee_risk(w, items, disputed_by_invoice(apply_decisions(w, items, drop=("reject",))))
     cashback(w, items)
+    margin_step_down(w, items)
     expiry(w, items)
     items = apply_decisions(w, items)
     for it in items:                         # an invoice whose own numbers don't add up is a weaker basis
@@ -1401,5 +1744,9 @@ def build(state: Path, as_of: date, mode: str, feedback: list[dict], prev: dict)
           "expiry": [public(i) for i in items if i["class"] == "expiry"],
           "late_fee_risk": [public(i) for i in items if i["class"] == "late_fee_risk"]}
     return {"schema_version": "1.0", "as_of": as_of.isoformat(), "mode": mode, "findings": findings,
-            "portfolio": pf}
-
+            "portfolio": pf, "diagnostics": {"invoice_ids": sorted(w.invoices),
+                "invoice_line_counts": {k: len(cp["f"].get("lines") or []) for k, (cp, _) in invoice_copies(w).items()},
+                "invoice_totals": {k: money(D(cp["f"].get("total"))) if D(cp["f"].get("total")) is not None else None
+                                   for k, (cp, _) in invoice_copies(w).items()},
+                "credit_note_ids": sorted(str(cn.get("number")) for cn in w.credit_notes if cn.get("number")),
+                "unreadable_documents": w.unreadable}}

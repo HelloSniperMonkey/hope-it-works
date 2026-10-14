@@ -1,0 +1,12 @@
+name: a delegation decided in June cannot change a May report
+mailbox: evals/mailboxes/feedback_one_off
+as_of: '2036-05-31'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_authority_waivers.json
+expect:
+  key:
+    invoice_id: VLA-ST-3603
+    class: waived_but_billed
+  verdict: no_finding
+why: The authority fact becomes available on June 1, even though its standing scope starts in March.

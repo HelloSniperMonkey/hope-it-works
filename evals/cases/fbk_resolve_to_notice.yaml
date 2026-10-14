@@ -1,0 +1,26 @@
+name: feedback resolves the conflict in favour of the tariff notice
+mailbox: evals/mailboxes/conflict_above_both
+as_of: '2036-06-02'
+mode: supervised
+by_batch:
+  - after_batch: batch_01
+    as_of: '2036-05-31'
+    expect:
+      verdict: conflict
+      amount_usd: null
+      amount_range: ['28.62', '44.03']
+      action: escalate
+      supersedes_required: false
+      learned_at_required: false
+feedback:
+  batch_01: evals/feedback/fbk_use_notice.json
+expect:
+  key:
+    invoice_id: VLA-36-00502
+    class: overcharge
+  verdict: finding
+  amount_usd: '28.62'
+  action: draft:dispute
+  supersedes_required: true
+  learned_at_required: true
+why: billed minus the notice's total

@@ -5,12 +5,14 @@ PY      ?= .venv/bin/python
 HARNESS ?= harness/harness.py
 MODE    ?= both
 
-.PHONY: help setup venv run grade sheet eval validate clean
+.PHONY: help setup venv run grade sheet eval eval-web test validate clean
 help:
 	@echo "make setup      create .venv and install harness/requirements.txt"
 	@echo "make grade      replay the practice mailbox through your harness; writes report_card.txt and .json"
 	@echo "make sheet      run the exam mailbox; writes out/exam_report.json and answer_sheet.json"
 	@echo "make eval       run your cases in evals/cases (K=<text> runs only matching files)"
+	@echo "make test       run offline arithmetic, feedback, action and fresh-process regressions"
+	@echo "make eval-web   build/replay source-backed layouts with golden reading (LIVE=1 uses the API)"
 	@echo "make validate   check the repo is ready to send (SUBMISSION.md)"
 	@echo "make run        run the practice mailbox once; writes out/practice_report.json"
 
@@ -38,6 +40,15 @@ sheet: venv
 
 eval: venv
 	$(PY) evals/run_evals.py --harness $(HARNESS) $(if $(K),-k $(K),)
+
+test: venv
+	$(PY) harness/test_engine.py
+	$(PY) harness/test_parse.py
+	$(PY) -m unittest discover -s harness -p 'test_regressions.py' -v
+
+eval-web: venv
+	$(PY) evals/build_web_cases.py
+	$(PY) evals/run_web_evals.py $(if $(filter 1,$(LIVE)),--live,)
 
 validate: venv
 	@$(PY) tools/check_submission.py --harness $(HARNESS)

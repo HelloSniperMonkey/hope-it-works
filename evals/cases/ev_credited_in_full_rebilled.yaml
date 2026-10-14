@@ -1,0 +1,10 @@
+name: 'bill credited in full (amounts in brackets), then billed again: not a duplicate'
+mailbox: evals/mailboxes/credit_brackets
+as_of: '2036-05-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-06002
+    class: duplicate
+  verdict: no_finding
+why: 'glossary: credited in full and then billed again is fine'

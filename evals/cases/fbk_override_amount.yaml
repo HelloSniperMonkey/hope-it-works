@@ -1,0 +1,25 @@
+name: feedback overrides a finding's amount
+mailbox: evals/mailboxes/layout
+as_of: '2036-06-02'
+mode: supervised
+by_batch:
+  - after_batch: batch_01
+    as_of: '2036-03-31'
+    expect:
+      verdict: finding
+      amount_usd: '31.18'
+      action: draft:dispute
+      supersedes_required: false
+      learned_at_required: false
+feedback:
+  batch_01: evals/feedback/fbk_override.json
+expect:
+  key:
+    invoice_id: VLA-36-00417
+    class: overcharge
+  verdict: finding
+  amount_usd: '25.00'
+  action: draft:dispute
+  supersedes_required: true
+  learned_at_required: true
+why: override_amount replaces 31.18 with the settled 25.00

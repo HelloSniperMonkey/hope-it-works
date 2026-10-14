@@ -1,0 +1,10 @@
+name: '9 kg at the lane''s own 70.00 minimum: correct'
+mailbox: evals/mailboxes/minimum_charge
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-05002
+    class: overcharge
+  verdict: no_finding
+why: 3.90 x 9 = 35.10 < 70.00

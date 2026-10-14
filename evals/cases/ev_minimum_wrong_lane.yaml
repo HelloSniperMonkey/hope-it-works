@@ -1,0 +1,12 @@
+name: 8 kg billed at 110.00 minimum; the lane's minimum is 95.00, and fuel rides on it
+mailbox: evals/mailboxes/minimum_charge
+as_of: '2036-04-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-05001
+    class: overcharge
+  verdict: finding
+  amount_usd: '18.13'
+  action: draft:dispute
+why: 6.40 x 8 kg = 51.20 is under the 95.00 minimum, so freight is 95.00 and fuel is on 95.00

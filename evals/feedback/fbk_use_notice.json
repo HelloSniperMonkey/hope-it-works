@@ -1,0 +1,43 @@
+{
+ "schema_version": "1.0",
+ "world": "EVAL",
+ "after_batch": "batch_01",
+ "decided_at": "2036-06-01T09:00:00Z",
+ "decided_by": {
+  "name": "Quentin Abara",
+  "role": "Head of Payables",
+  "entity": "BWB-US"
+ },
+ "items": [
+  {
+   "item_id": "fb-p-1",
+   "finding_key": {
+    "invoice_id": "VLA-36-00502",
+    "class": "overcharge"
+   },
+   "solicited": true,
+   "decision": "resolve_conflict",
+   "fact": {
+    "type": "precedence",
+    "subject": {
+     "contract_id": "VLA-US-AIR-07",
+     "lane": "USW5-USC2"
+    },
+    "value": {
+     "use": "rate notice"
+    },
+    "evidence": "Agreed with Velloran"
+   },
+   "scope": {
+    "kind": "standing",
+    "applies_to": {
+     "contract_id": "VLA-US-AIR-07",
+     "lane": "USW5-USC2"
+    },
+    "valid_from": "2036-04-01",
+    "valid_to": null
+   },
+   "note": ""
+  }
+ ]
+}

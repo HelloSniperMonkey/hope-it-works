@@ -1,0 +1,14 @@
+name: confirmed standing waiver authority covers april
+mailbox: evals/mailboxes/feedback_one_off
+as_of: '2036-06-02'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_authority_waivers.json
+expect:
+  key:
+    invoice_id: VLA-ST-3604
+    class: waived_but_billed
+  verdict: finding
+  amount_usd: '350.00'
+  action: draft:dispute
+why: 'standing authority for waivers on this contract from 2036-03-01: both months were named'

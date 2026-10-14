@@ -1,0 +1,41 @@
+{
+ "schema_version": "1.0",
+ "world": "EVAL",
+ "after_batch": "batch_01",
+ "decided_at": "2036-06-01T09:00:00Z",
+ "decided_by": {
+  "name": "Quentin Abara",
+  "role": "Head of Payables",
+  "entity": "BWB-US"
+ },
+ "items": [
+  {
+   "item_id": "fb-c-1",
+   "finding_key": {
+    "invoice_id": "VLA-36-00417",
+    "class": "overcharge"
+   },
+   "solicited": true,
+   "decision": "close",
+   "fact": {
+    "type": "dispute_closed",
+    "subject": {
+     "invoice_id": "VLA-36-00417"
+    },
+    "value": {
+     "status": "closed"
+    },
+    "evidence": "Credit note agreed"
+   },
+   "scope": {
+    "kind": "one_off",
+    "applies_to": {
+     "invoice_id": "VLA-36-00417"
+    },
+    "valid_from": "2036-06-01",
+    "valid_to": null
+   },
+   "note": ""
+  }
+ ]
+}

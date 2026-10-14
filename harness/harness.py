@@ -49,17 +49,31 @@ def _resolve(facts, pages: list[str]):
     return facts
 
 
-_SNIFF = [("credit_note", r"credit note"), ("invoice", r"invoice|statement of account|monthly statement|billing "
-          r"document|charges advice|statement"), ("air_waybill", r"air waybill"),
+_SNIFF = [("credit_note", r"credit (?:note|adjustment|memo)|\bavoir\b"),
+          ("invoice", r"invoice|statement of account|monthly statement|billing document|charges advice|statement|"
+           r"freight bill|debit (?:note|adjustment)|\bfacture\b"),
+          ("air_waybill", r"air waybill|airwaybill"),
           ("dg_declaration", r"declaration"), ("contract", r"master .*agreement")]
 
 
 def _sniff(kind: str, d) -> str:
     """When the email-level reader couldn't place an attachment, let its own opening lines say what it is."""
     import re
-    if kind != "other" or not d.pages:
+    if not d.pages:
         return kind
     head = " ".join(d.pages[0].split("\n")[:6]).lower()
+    if re.search(r"\bcommercial invoice\b|\bpro[ -]?forma\b", head):
+        return "other"              # customs valuation / quotation, not a carrier charge document
+    if re.search(_SNIFF[0][1], head):
+        return "credit_note"        # carrier credit adjustments sometimes retain 'invoice' header fields
+    if kind != "other":
+        return kind
+    opening = d.pages[0].split("\n")[:6]
+    invoice_title = any(re.match(r"(?:(?:inbound|outbound|delivery service|customs duty)\s+)?invoice\b|"
+                                 r"billing document\b|charges advice\b|freight bill\b|debit (?:note|adjustment)\b",
+                                 ln.strip(), re.I) for ln in opening)
+    if not invoice_title and any(re.match(r"(?:e[- ]?)?air ?waybill\b(?!\s+reference)", ln.strip(), re.I) for ln in opening):
+        return "air_waybill"        # a title, not an 'Air Waybill' reference field on an invoice
     return next((k for k, pat in _SNIFF if re.search(pat, head)), kind)
 
 
@@ -69,50 +83,50 @@ def ingest(batch_dir: str, state_dir: str) -> None:
     (state / "docs").mkdir(parents=True, exist_ok=True)
     batch = Path(batch_dir).name
     groups = [DOCS.read_email(f, batch) for f in sorted(Path(batch_dir).glob("*.eml"))]
+    errors = []
 
-    def guarded(fn, *a):
+    def guarded(fn, *a, optional=False):
         try:
             return fn(*a)
         except Exception as e:              # noqa: BLE001 - one unreadable document must not sink the batch
-            llm.log(f"ingest: {a[0] if a else ''}: {type(e).__name__}: {e}")
+            what = a[0][0].ref if a and isinstance(a[0], list) else getattr(a[0], "ref", a[0]) if a else ""
+            llm.log(f"ingest: {what}: {type(e).__name__}: {e}")
+            if not optional:
+                errors.append(f"{what}: {type(e).__name__}")
             return None
 
-    scans = [d for g in groups for d in g if d.is_scan]
-    with ThreadPoolExecutor(WORKERS) as ex:
-        for d, pages in zip(scans, ex.map(lambda d: guarded(llm.transcribe, state, d.sha, d.scan_pngs), scans)):
-            if pages:
-                d.pages = pages
-
-    def read_email(g):
+    def read_group(g, atts_pool):
+        """One email end to end: its scans, the email, then its attachments; saved as soon as it is done, so a step
+        cut short by a timeout keeps every email it finished."""
         email, atts = g[0], g[1:]
+        for d in atts:
+            if d.is_scan:
+                d.pages = guarded(llm.transcribe, state, d.sha, d.scan_pngs, optional=True) or \
+                    guarded(lambda _, p: DOCS.ocr_pages(p), d.ref, d.scan_pngs, optional=True) or d.pages
+                if not any(page.strip() for page in d.pages):
+                    errors.append(f"{d.ref}: scan has no readable text")
         heads = "\n\n".join(f"<attachment name=\"{a.ref.split('#', 1)[1]}\">\n" +
-                            "\n".join(a.pages[0].split("\n")[:25]) + "\n</attachment>" for a in atts)
-        return llm.extract(state, "email", email.sha, DOCS.numbered(email.pages),
-                           f"Opening lines of the attachments, for classifying them:\n{heads}" if atts else "")
-
-    with ThreadPoolExecutor(WORKERS) as ex:
-        email_facts = list(ex.map(lambda g: guarded(read_email, g), groups))
-
-    jobs = []
-    for g, ef in zip(groups, email_facts):
+                             "\n".join(a.pages[0].split("\n")[:25]) + "\n</attachment>" for a in atts)
+        ef = guarded(lambda _: llm.extract(state, "email", email.sha, DOCS.numbered(email.pages),
+                                           f"Opening lines of the attachments, for classifying them:\n{heads}"
+                                           if atts else ""), email.ref)
         kinds = {k["name"]: k["kind"] for k in (ef or {}).get("attachment_kinds") or []}
-        for d in g[1:]:
-            jobs.append((d, _sniff(kinds.get(d.ref.split("#", 1)[1], "other"), d)))
-    with ThreadPoolExecutor(WORKERS) as ex:
-        att_facts = list(ex.map(lambda j: guarded(lambda d, k: llm.extract(state, k, d.sha, DOCS.numbered(d.pages)),
-                                                  *j), jobs))
-    by_doc = {d.ref: (k, f) for (d, k), f in zip(jobs, att_facts)}
-    for g, ef in zip(groups, email_facts):
-        email = g[0]
+        jobs = [(d, _sniff(kinds.get(d.ref.split("#", 1)[1], "other"), d)) for d in atts]
+        facts = list(atts_pool.map(lambda j: guarded(lambda d, k: llm.extract(state, k, d.sha, DOCS.numbered(d.pages)),
+                                                     *j), jobs))
         rec = {"meta": email.meta, "docs": [{"ref": email.ref, "kind": "email", "scan": False, "pages": email.pages,
                                              "facts": _resolve(ef, email.pages) if ef else None}]}
-        for d in g[1:]:
-            k, f = by_doc[d.ref]
+        for (d, k), f in zip(jobs, facts):
             rec["docs"].append({"ref": d.ref, "kind": k if f else "unreadable", "scan": d.is_scan,
                                 "facts": _resolve(f, d.pages) if f else None})
         name = email.ref.replace("/", "_").replace(".eml", "")
         (state / "docs" / f"{name}.json").write_text(json.dumps(rec, indent=1))
+
+    with ThreadPoolExecutor(WORKERS) as groups_pool, ThreadPoolExecutor(WORKERS) as atts_pool:
+        list(groups_pool.map(lambda g: guarded(read_group, g, atts_pool), groups))
     (state / "batches.json").write_text(json.dumps(sorted(set(_read(state / "batches.json", []) + [batch]))))
+    if errors:
+        raise RuntimeError(f"{len(errors)} ingestion failure(s); completed documents saved: " + "; ".join(errors[:5]))
 
 
 def _read(path: Path, default):

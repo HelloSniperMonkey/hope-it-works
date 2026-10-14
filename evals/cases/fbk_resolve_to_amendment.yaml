@@ -1,0 +1,14 @@
+name: feedback resolves the conflict in favour of the amendment
+mailbox: evals/mailboxes/conflict_above_both
+as_of: '2036-06-02'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_use_amendment.json
+expect:
+  key:
+    invoice_id: VLA-36-00502
+    class: overcharge
+  verdict: finding
+  amount_usd: '44.03'
+  action: draft:dispute
+why: billed minus the amendment's total, from the feedback's valid_from

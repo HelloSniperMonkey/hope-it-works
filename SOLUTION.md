@@ -1,20 +1,42 @@
 # My solution
 
-Replace each prompt line (the ones starting with `>`) with your own words. This is the file a reviewer reads first,
-before running your code. The brief stays where it is, in README.md and BRIEF.pdf.
-
 ## How to run it
 
-> The commands, any setup beyond `make setup`, and anything the grader needs that isn't in `harness/requirements.txt`.
+```
+make setup                                   # .venv from harness/requirements.txt
+export ANTHROPIC_API_KEY=...                 # and ANTHROPIC_BASE_URL if you use a gateway
+make grade                                   # practice mailbox, both modes -> report_card.txt / .json
+make sheet                                   # exam mailbox -> out/exam_report.json, answer_sheet.json
+make eval                                    # 46 cases in evals/cases, 44 of them mine
+make test                                    # offline rules regressions, no API needed
+make eval-web                                # 28 source-backed invoice layouts, offline reading
+make validate
+```
+
+Nothing beyond `harness/requirements.txt` is needed, and nothing but `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL`: the harness calls the Anthropic Python SDK (`anthropic==1.8.0`, as shipped) directly; no Claude Code, no `claude` CLI. `ingest` reads each email as its own pipeline (the email, then its attachments in parallel, 12 at a time) and saves it as soon as it is done, so a step cut short keeps what it finished. Each document is one streamed call to `claude-opus-5-5` with structured output; results are cached by content hash in `.cache/llm`, or in the state dir when the code folder is read-only. If the endpoint refuses the server-side fallback beta or the output schema, whatever its error text, the harness drops that feature and checks the JSON against the schema itself. A scan goes to the vision model, with local OCR (`rapidocr`) when that call fails. `make grade` on a cold cache is about 160 calls per mode. `NOVA_NO_CACHE=1` forces live calls (dev only).
+
+How that path was checked without a key here: a local stand-in for the Messages endpoint, run with only the two environment variables, on a read-only copy of `harness/`. All 41 practice and 41 exam emails went through ingest, report and feedback with nothing unreadable, and so did gateways that reject the fallback beta, reject the schema, or answer with an uninformative 400. It proves the plumbing (request shape, streaming, schema checks, fallbacks, scans, caching), not what a real model reads.
 
 ## What works
 
-> What your harness does well today, with your practice report card and your eval results.
+Measured on cached extractions: the practice card is 99.8 out of 100 in supervised and in autonomous mode, with every hard gate clear; all 46 eval cases pass (2 shipped samples and 44 of mine over 23 mailboxes: new customer, wordings and layouts, an injection email, one-off and quoted waivers, a backdated amendment, compounding late fees, the 14-day and 60-day windows, storage and delivery rules, partial credits, INR without an exchange rate, and fourteen feedback cases for resolve, override, close, reject and standing or one-off authority, including controls that check feedback does *not* act before its decision date). The exam sheet comes out at $8,165.33 total savings; I rederived all ten findings by hand from the documents, including the scanned INR invoice (its transcription is arithmetically self-consistent) and the cashback quarter. Every quote in both reports resolves with the grader's validator. Invoice arithmetic checks pass on all 112 cached invoices and fire on a mutated number.
+
+Beyond the cases, two offline suites exercise the rules directly. `make test` runs 27 typed-fact regressions with no API: the close/learn/sibling rate triple, every feedback scope filter and date boundary, a later backdated amendment beating an accepted notice, exactly-$5,000 invoice aggregation across classes, stale late-fee risk removal, the three credit types (including thresholds net of prior credit notes and a retransmitted credit note counted once), sign and currency renderings, and adversarial reports pushed through the real scorer with all five hard gates asserted clear. `make eval` itself no longer checks a single final report: it replays each case through `grader/run_grader.py`'s own stepper (fresh processes, empty working directory, restricted environment, a report before every feedback delivery) and validates the schema, duplicate keys and every citation of every report, plus timeline facts (`supersedes`, `learned_at`, `retro`, forbidden outbound text). That strictness is what caught the eight stale expectations below.
+
+`make eval-web` builds 28 fictional invoice layouts from public carrier documentation (UPS, DHL, IATA, Maersk, LTL guides, Peppol BIS Billing 3.0, the FedEx EDI 210 guide, FedEx India GST, DHL French billing, Factur-X; provenance and what was inspected in `evals/web_sources.yaml`) and replays them in both modes with explicit golden extraction facts. The corpus covers published/incentive/net-billed columns, correction deltas, credit-then-rebill cycles, resent credit notes, piece versus billed weights, CWT and PRO references, container-level charges, monetary per-pound fuel, contract-defined fuel bases, prepaid/collect allocation, document-level allowances with applied prepaid and rounding, a French TVA layout with HT/TTC totals, an Indian GST invoice with CGST/SGST/IGST, a late-fee-only invoice with an authorised due-date extension, and a hybrid Factur-X PDF with embedded XML, plus decoys (customs commercial invoice, pro forma, deficit weight, remittance repetitions) and an injected remittance footer. Each case also asserts the parsed invoice ids, line counts and totals, so a negative case cannot pass by ignoring the document.
 
 ## What doesn't
 
-> What it gets wrong or skips, and anything we should know before we run it on our set.
+- **No real API call has been made from this code.** Everything behind these numbers was read by Claude Code subagents (Opus, later Sonnet) using the same prompts and schemas, written into the same cache; the SDK path was exercised only against a local stand-in endpoint (above). What a real `claude-opus-5-5` reads from your documents, and how long a large contract takes against the 600-second step limit, are untested. This is the biggest risk for your run.
+- The same limit covers the new suites: `make eval-web` and the regressions run on authored golden facts and cached extractions, so they prove the rules, the process boundaries and the reader *prompts*, not what a live model reads from an unseen layout. `make eval-web LIVE=1` exists for exactly that and has not been run (no key here).
+- The practice score is a smoke test: the answers are public and I tuned to them. The exam sheet has no key, so I can only say its numbers are internally right, not that nothing is missing.
+- Margin step-down, other promised credits, band-by-band and annual rebates are implemented with offline regressions, but no contract in the data has those clauses, so how they are worded and extracted is untested.
+- The engine went through two adversarial reviews against GLOSSARY.md (27 confirmed bugs, then 18 problems in those fixes, all fixed and replayed), then a review against the grader's own scoring code; late-fee and conflict edge cases beyond those are still the least-tested code.
+- Confidence is hand-set. The local sets have no reported wrong item, so AUROC and Brier could not be tuned.
+- My evals were written by me with knowledge of the engine. They test generalisation to new wordings, not to the unknown.
 
 ## The eval case that caught a bug
 
-> Which case in `evals/` caught a real bug, what the bug was, and how you fixed it.
+`ev_conflict_above_both` and the shipped `sample_conflict` both came back `cannot_determine` instead of `conflict`. The cause: an amendment that replaces a lane's rates inline also names "Annex A", and my rule read any named rates document we don't hold as missing. The fix makes a reference count as missing only when the instrument gives no rates for that lane itself and the name isn't part of the contract we do hold. It fixed three cases at once and left the practice card unchanged. A second catch was in my own tooling: a cache helper wrote empty results, which then looked like hits, so one contract silently read as `unreadable`.
+
+Later passes caught four more. Moving `make eval` onto the grader's own replay exposed eight feedback cases that expected a person's June 1 decision to change a March or May 31 report — the eval runner had only ever looked at one final report, so the dates were never checked; the positive dates moved after the decision and pre-decision controls were added. A resent-credit fixture showed the same credit note subtracted twice from cashback; credit notes are now deduplicated by contract and printed id. A Peppol-style note mixing a −100 cancellation with a +25 re-bill was subtracted as 125 instead of 75 because the code took the absolute value of every line; mixed-sign notes now count their net. And the French and GST layouts came back empty because their printed charge labels ("Fret principal", "Air freight") matched no code alias — the fixture contracts now define the labels they use, which is the honest fix: a contract, not a hardcoded list, is where labels come from.

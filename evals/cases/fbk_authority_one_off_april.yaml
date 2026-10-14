@@ -1,0 +1,12 @@
+name: 'one-off sender authority: april'
+mailbox: evals/mailboxes/feedback_one_off
+as_of: '2036-06-02'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_authority_one_off.json
+expect:
+  key:
+    invoice_id: VLA-ST-3604
+    class: waived_but_billed
+  verdict: no_finding
+why: the one-off authority was for VLA-ST-3603 only; spreading it is the permanent-waiver gate

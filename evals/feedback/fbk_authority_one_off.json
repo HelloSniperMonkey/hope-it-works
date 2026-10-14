@@ -1,0 +1,44 @@
+{
+ "schema_version": "1.0",
+ "world": "EVAL",
+ "after_batch": "batch_01",
+ "decided_at": "2036-06-01T09:00:00Z",
+ "decided_by": {
+  "name": "Quentin Abara",
+  "role": "Head of Payables",
+  "entity": "BWB-US"
+ },
+ "items": [
+  {
+   "item_id": "fb-a-2",
+   "finding_key": {
+    "invoice_id": "VLA-ST-3603",
+    "class": "waived_but_billed"
+   },
+   "solicited": true,
+   "decision": "confirm",
+   "fact": {
+    "type": "sender_authority",
+    "subject": {
+     "person": "Rufus Okonkwo",
+     "party": "VLA-US"
+    },
+    "value": {
+     "categories": [
+      "waivers"
+     ]
+    },
+    "evidence": "Delegation letter seen by AP"
+   },
+   "scope": {
+    "kind": "one_off",
+    "applies_to": {
+     "invoice_id": "VLA-ST-3603"
+    },
+    "valid_from": "2036-03-01",
+    "valid_to": null
+   },
+   "note": "Rufus may waive the March fee on this statement only."
+  }
+ ]
+}

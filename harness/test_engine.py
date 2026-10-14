@@ -5,6 +5,7 @@ find.   python harness/test_engine.py
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 from datetime import date
@@ -97,12 +98,118 @@ def build_state(state: Path) -> None:
         rec = {"meta": group[0].meta, "docs": []}
         for d in group:
             kind, facts = FACTS.get(d.ref, ("email" if d.ext == "eml" else "other", {}))
+            facts = json.loads(json.dumps(facts))
+            if kind == "contract":
+                # This minimal fixture originally omitted the dispute recipient. Include the actual Schedule 1 row
+                # so the autonomous positive control has the authority it claims to have.
+                for n, row in enumerate(d.pages[10].splitlines(), 1):
+                    if "billing disputes" in row.lower() and "TBX-US" in row:
+                        address = re.search(r"[\w.+-]+@[\w.-]+", row)
+                        assert address, row
+                        facts["authorised_persons"].append({"name": "Disputes contact", "party": "TBX-US",
+                                                           "categories": ["billing_disputes"],
+                                                           "email": address[0], "src": f"11:{n}"})
             rec["docs"].append({"ref": d.ref, "kind": kind, "scan": False,
-                                "facts": harness._resolve(json.loads(json.dumps(facts)), d.pages)})
+                                "facts": harness._resolve(facts, d.pages)})
         (state / "docs" / (group[0].ref.replace("/", "_") + ".json")).write_text(json.dumps(rec))
 
 
+def write_state(state: Path, docs: list) -> None:
+    """Hand-written facts as ingest would store them: (kind, facts, received date[, sender address])."""
+    (state / "docs").mkdir(exist_ok=True)
+    for i, (kind, facts, rec, *frm) in enumerate(docs):
+        meta = {"email": f"b/{i}.eml", "received": rec + "T09:00:00Z", "from_addr": (frm or ["x@car.example"])[0],
+                "from_name": "X"}
+        (state / "docs" / f"{i}.json").write_text(json.dumps(
+            {"meta": meta, "docs": [{"ref": f"b/{i}.eml#{i}.pdf", "kind": kind, "facts": facts}]}))
+
+
+def review_check() -> None:
+    """Fixes from the glossary review. An INR conflict reports its range in USD, and an unchanged key keeps its id
+    from one report to the next (P1, F1). Late-fee month 2 billed on its own later invoice is caught (LF-1)."""
+    contract = {"contract_id": "C-IN", "carrier_party": "CAR", "currency": "INR", "effective_date": "2040-01-01",
+                "end_date": "2040-12-31", "rate_periods": [{"name": "P1", "first_pickup": "2040-01-01",
+                                                            "last_pickup": "2040-12-31"}],
+                "rates": [{"lane": "IN1-US1", "band": "100-299.5 kg", "lo": "100", "hi": "299.5",
+                           "period_rates": [{"period": "P1", "rate": "80.00"}]}],
+                "fuel": [{"month": "2040-03", "percent": "10"}], "fx": [{"month": "2040-03", "inr_per_usd": "80.00"}],
+                "charge_codes": [{"code": "FRT", "name": "Air freight", "aliases": []},
+                                 {"code": "FUEL", "name": "Fuel surcharge", "aliases": []}],
+                "authorised_persons": [{"name": "Rita Rate", "party": "CAR", "categories": ["rates"],
+                                        "email": "rita@car.example"}],
+                "clauses": {"precedence": {"notice_vs_amendment": "unranked"}}}
+    amd = {"contract_id": "C-IN", "signed_by_both": True, "effective_from": "2040-02-01",
+           "rate_changes": [{"lane": "IN1-US1", "band": "100-299.5 kg", "lo": "100", "hi": "299.5", "rate": "70.00"}]}
+    notice = {"rate_notices": [{"lane": "IN1-US1", "effective_from": "2040-02-15", "effective_to": "2040-06-30",
+                                "written_by_name": "Rita Rate", "written_by_email": "rita@car.example",
+                                "quoted_only": "no", "rows": [{"band": "100-299.5 kg", "lo": "100", "hi": "299.5",
+                                                               "rate": "75.00"}]}]}
+    inv = {"invoice_number": "IN-1", "invoice_date": "2040-03-20", "contract_id": "C-IN", "currency": "INR",
+           "total": "17600.00", "lines": [
+               {"awb": "A1", "lane": "IN1-US1", "date": "2040-03-10", "description": "Air freight", "quantity": "200",
+                "rate": "80.00", "amount": "16000.00"},
+               {"awb": "A1", "lane": "IN1-US1", "date": "2040-03-10", "description": "Fuel surcharge",
+                "rate": "10", "rate_is_percent": True, "percent_base": "16000.00", "amount": "1600.00"}]}
+    track = {"rows": [{"awb": "A1", "event": "PICKED_UP", "date": "2040-03-10"}]}
+    lf = {"contract_id": "C-LF", "carrier_party": "CAR", "currency": "USD", "effective_date": "2039-01-01",
+          "charge_codes": [{"code": "LATE", "name": "Late fee", "aliases": []}],
+          "clauses": {"late_fee": {"percent_per_month": "1.86", "grace_days": 5, "days_per_month": 30}}}
+    reg = {"rows": [{"invoice_number": "T-1", "due_date": "2040-01-10", "amount": "680.12", "status": "paid",
+                     "paid_date": "2040-02-05"}]}
+    fee = lambda no, d, m: {"invoice_number": no, "invoice_date": d, "contract_id": "C-LF", "currency": "USD",
+                            "total": "12.65", "lines": [{"description": "Late fee", "amount": "12.65", "late_fee": {
+                                "on_invoice": "T-1", "overdue_amount": "680.12", "month_number": m}}]}
+    with tempfile.TemporaryDirectory() as tmp:
+        write_state(Path(tmp), [("contract", contract, "2039-12-01"), ("contract_instrument", amd, "2040-01-20"),
+                                ("email", notice, "2040-02-10", "rita@car.example"), ("invoice", inv, "2040-03-21"),
+                                ("tracking_export", track, "2040-03-31"), ("contract", lf, "2039-01-01"),
+                                ("ap_register", reg, "2040-02-28"), ("invoice", fee("F-1", "2040-02-20", 1), "2040-02-21"),
+                                ("invoice", fee("F-2", "2040-03-20", 2), "2040-03-21")])
+        r1 = harness.report("2040-04-30", "supervised", tmp)
+        r2 = harness.report("2040-05-31", "supervised", tmp)
+    got = {i["invoice_id"]: i for i in r1["findings"]}
+    c = got["IN-1"]                         # billed 17600; amendment 15400, notice 16500 INR, 80 INR per USD
+    assert (c["verdict"], c["amount_range"], c["action"]) == ("conflict", ["13.75", "27.50"], "escalate"), c
+    assert (got["F-2"]["class"], got["F-2"]["amount_usd"]) == ("late_fee_not_owed", "12.65"), got.get("F-2")
+    assert "F-1" not in got, got["F-1"]     # 26 days late, 5 days' grace: month 1 is owed
+    again = {i["invoice_id"]: i for i in r2["findings"]}
+    assert [(again[k]["id"], again[k]["supersedes"]) for k in ("IN-1", "F-2")] == \
+        [(got[k]["id"], []) for k in ("IN-1", "F-2")], (again["IN-1"], again["F-2"])
+
+
+def margin_check() -> None:
+    """Margin step-down, from hand-written facts: spend crosses 10,000 on the 2nd invoice; the 3rd and 4th still bill
+    12% instead of 8%: (240 - 160) + (120 - 80) = 120.00, one cashback item for the quarter, no overcharges."""
+    contract = {"contract_id": "M-1", "carrier_party": "CAR", "currency": "USD", "effective_date": "2040-01-01",
+                "end_date": "2040-12-31", "charge_codes": [{"code": "COST", "name": "Carrier cost", "aliases": []},
+                                                           {"code": "MARGIN", "name": "Handling margin", "aliases": []}],
+                "clauses": {"qualifying_spend": {"include_codes": ["COST"], "include_annex_d": False},
+                            "handling_margin": {"applies": True, "percent": "12", "step_down_percent": "8",
+                                                "step_down_after_spend": "10000.00"}}}
+    docs = [("contract", contract, "2039-12-01")]
+    for n, (d, cost) in enumerate([("2040-01-10", 6000), ("2040-02-10", 5000), ("2040-03-10", 2000),
+                                   ("2040-03-20", 1000)], 1):
+        docs.append(("invoice", {"invoice_number": f"M-{n}", "invoice_date": d, "contract_id": "M-1",
+                                 "currency": "USD", "total": str(cost * 1.12), "lines": [
+                                     {"awb": f"A{n}", "description": "Carrier cost", "amount": f"{cost}.00"},
+                                     {"awb": f"A{n}", "description": "Handling margin", "rate": "12",
+                                      "rate_is_percent": True, "percent_base": f"{cost}.00",
+                                      "amount": f"{cost * 12 / 100:.2f}"}]}, d))
+    with tempfile.TemporaryDirectory() as tmp:
+        write_state(Path(tmp), docs)
+        early = engine.build(Path(tmp), date(2040, 3, 31), "supervised", [], {})
+        assert not early["portfolio"]["cashback"], "reported before the quarter closed"
+        rep = engine.build(Path(tmp), date(2040, 4, 30), "supervised", [], {})
+    cb = rep["portfolio"]["cashback"]
+    assert [(i["period"], i["credit_type"], i["amount_usd"], i["action"]) for i in cb] == \
+        [("2040-Q1", "margin_step_down", "120.00", "draft:claim_credit")], cb
+    assert not rep["findings"], rep["findings"]
+
+
 def main() -> int:
+    margin_check()
+    review_check()
+    print("ok: INR conflict range in USD, late-fee month 2 caught, unchanged keys keep their id")
     with tempfile.TemporaryDirectory() as tmp:
         build_state(Path(tmp))
         for mode, act in (("supervised", "draft:dispute"), ("autonomous", "execute:dispute")):
@@ -118,6 +225,7 @@ def main() -> int:
     assert engine.arith_problems(bad) == []
     bad["lines"][0]["amount"] = "1621.29"                      # one misread digit
     assert any("6.69" in p or "add to" in p for p in engine.arith_problems(bad)), engine.arith_problems(bad)
+    print("ok: margin step-down -> one 120.00 cashback item for the quarter")
     print("ok: overcharge example -> 196.92 (draft/execute), decoy left alone, every quote on its page")
     return 0
 

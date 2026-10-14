@@ -1,0 +1,10 @@
+name: 'the summary rows repeat each shipment''s total: not a duplicate charge'
+mailbox: evals/mailboxes/summary_detail
+as_of: '2036-03-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-02001
+    class: duplicate
+  verdict: no_finding
+why: a summary line is not a second billing of the shipment

@@ -1,0 +1,12 @@
+name: a rejected finding is dropped
+mailbox: evals/mailboxes/layout
+as_of: '2036-06-02'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_reject.json
+expect:
+  key:
+    invoice_id: VLA-36-00417
+    class: overcharge
+  verdict: no_finding
+why: reject means the key is not a finding

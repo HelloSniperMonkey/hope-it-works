@@ -55,6 +55,26 @@ def pdf_page_pngs(data: bytes, dpi: int = 200) -> list[bytes]:
         return [p.get_pixmap(dpi=dpi).tobytes("png") for p in doc]
 
 
+def ocr_pages(pngs: list[bytes]) -> list[str]:
+    """Local OCR (rapidocr) for a scan, used when the vision model can't be reached: text boxes regrouped into lines
+    by their vertical centre, left to right. It drops spaces inside a box ("274kg"); the extractor copes."""
+    import numpy as np
+    from PIL import Image
+    from rapidocr_onnxruntime import RapidOCR
+    ocr, pages = RapidOCR(), []
+    for png in pngs:
+        res, _ = ocr(np.array(Image.open(io.BytesIO(png)).convert("RGB")))
+        rows: list[list] = []
+        for box, text, _conf in sorted(res or [], key=lambda r: (r[0][0][1] + r[0][2][1]) / 2):
+            y = (box[0][1] + box[2][1]) / 2
+            if rows and abs(rows[-1][0] - y) < 12:      # ponytail: fixed 12 px line tolerance at 200 dpi
+                rows[-1][1].append((box[0][0], text))
+            else:
+                rows.append([y, [(box[0][0], text)]])
+        pages.append("\n".join(" ".join(t for _, t in sorted(ws)) for _, ws in rows))
+    return pages
+
+
 # ---- XLSX (same as grader/extract.py) ---------------------------------------------------------------------------------
 def _cell_text(cell) -> str:
     v = cell.value

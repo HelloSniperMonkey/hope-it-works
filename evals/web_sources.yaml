@@ -1,0 +1,129 @@
+retrieved: '2026-10-15'
+purpose: Structural inspiration for fictional freight audit fixtures; these sources do not override GLOSSARY.md or mailbox contracts.
+sources:
+  ups_bill:
+    url: https://www.ups.com/media/en/ca/invoiceguide.pdf
+    issuer: UPS
+    title: A quick guide to reading your bill
+    inspected: All 3 pages
+    observations:
+      - Published Charge, Incentive Credit and Billed Charge are distinct columns; billed charge is before tax.
+      - Current-period amount differs from prior-invoice balances and total account outstanding.
+      - Shipping corrections show original/corrected values, but only Adjustment Amount is newly billed.
+      - Remittance forms repeat invoice numbers and totals without creating additional charges.
+  ups_flat_file:
+    url: https://www.ups.com/media/en/FFB_TDoc.pdf
+    issuer: UPS
+    title: UPS Flat File Bill Technical Documentation
+    inspected: Search-index excerpts from the historical specification
+    observations:
+      - SCC net charges represent the difference between original and corrected transport charges.
+      - Parent/child shipment rows and reference numbers must not collapse into duplicate bills.
+      - Headerless positional exports require a supplied column specification; a filename alone cannot define the schema.
+  dhl_invoice:
+    url: https://mydhl.express.dhl/content/dam/downloads/us/en/faqs-payment-and-billing/dhl_express_understanding_your_invoice_brochure_us_en.pdf.coredownload.pdf
+    issuer: DHL Express
+    title: Understanding your DHL Invoice
+    inspected: Pages 1-8 of 9
+    observations:
+      - Inbound/outbound invoices, debit adjustments and credit adjustments share header fields.
+      - Piece weights and volumetric details differ from total billed weight (weight codes A/V/B/W/M).
+      - Customs duty invoices contain item values and entry details that are not transport charges.
+      - A dispute may credit the original invoice in full, then rebill a corrected amount on another invoice.
+  dhl_fuel:
+    url: https://www.dhl.com/us-en/home/ecommerce/business-help-center/surcharge-policies.html
+    issuer: DHL eCommerce
+    title: Surcharge Policies
+    inspected: Search-index page excerpt
+    observations:
+      - Fuel can be a monetary rate per pound rather than a percentage of freight.
+      - Product and effective period determine the rate; minimum billed quantities can apply.
+  ltl_invoice:
+    url: https://www.freightsimple.com/blog/how-to-read-freight-invoice
+    issuer: FreightSimple (secondary educational source)
+    title: How to Read and Understand Your Freight Invoice
+    inspected: Full article
+    observations:
+      - PRO number identifies the shipment independently of invoice and account numbers.
+      - Linehaul can use CWT quantities, gross tariffs, discounts and net charges.
+      - Fuel commonly uses net linehaul rather than the total including accessorials.
+      - Deficit-weight and minimum-charge billing can be legitimate, so unusual weight alone is not a finding.
+  iata_awb:
+    url: https://www.iata.org/en/publications/newsletters/iata-knowledge-hub/air-cargo-tariffs-and-rules-what-you-need-to-know/
+    issuer: IATA
+    title: Air Cargo Tariffs and Rules - What You Need to Know
+    inspected: Full article
+    observations:
+      - Actual and volumetric weights, negotiated rates, accessorials and prepaid/collect allocations are distinct.
+      - An air waybill is a transport document with charge boxes, not automatically another carrier invoice.
+  maersk_invoice:
+    url: https://www.maersk.com/local-information/north-america/united-states-of-america/payment
+    issuer: Maersk
+    title: United States of America Payment
+    inspected: Search-index page excerpt
+    observations:
+      - Bill of lading, invoice and individual container numbers are distinct identifiers.
+      - Freight and detention/demurrage invoice types can use different currency conversion dates.
+      - Fixture contracts explicitly specify currency and dates; no Maersk rule is assumed for another carrier.
+  commercial_invoice:
+    url: https://www.ups.com/us/en/shipping/international-shipping/commercial-invoice
+    issuer: UPS
+    title: How to Create a Commercial Invoice
+    inspected: Search-index page excerpt
+    observations:
+      - A commercial invoice describes product values for customs; it is not a bill for carrier freight services.
+  peppol_bis:
+    url: https://docs.peppol.eu/poacc/billing/3.0/bis/
+    issuer: OpenPeppol
+    title: Peppol BIS Billing 3.0
+    inspected: Full page text, retrieved 2026-10-15
+    observations:
+      - "Line net amount = (item net price / price base quantity) x invoiced quantity + line charges - line "
+        "allowances (rule R120); the parts round separately."
+      - "Total without VAT = sum of line net amounts - document allowances + document charges (BR-CO-13)."
+      - "Amount due = total with VAT - prepaid amount + rounding amount (BR-CO-16); rounding is a header-level "
+        "amount, e.g. 999.81 rounded to 1000 gives 0.19."
+      - Price amount is always positive; crediting is conveyed by document type (credit note) or by amount sign, so
+        a note can mix negative cancellation lines with positive re-billed lines.
+      - One VAT breakdown per distinct category code and rate; tax = taxable amount x rate / 100, rounded to cents.
+  fedex_edi_210:
+    url: https://www.fedex.com/content/dam/fedex/us-united-states/services/210_motor_carrier_freight_details_invoice_and_820_payment_order-remittance_advice.pdf
+    issuer: FedEx
+    title: "EDI Invoicing Implementation Guide: 210 Invoice Detail, 820 Payment Order/Remittance Advice"
+    inspected: Pages 1-7 of 54 (contents and introduction)
+    observations:
+      - One invoice transaction set carries many tracking numbers, one per LX loop; multi-shipment invoices are the
+        norm and detail tracking data sits inside each loop.
+      - The guide has a dedicated late-fee segment syntax and a sample late-fee-only invoice (contents pages 23-25):
+        an invoice can contain nothing but late fees.
+      - Electronic Invoice Adjustment files with reason codes adjust billed charges as separate documents.
+      - Duty and tax invoicing follows its own rules, separate from transportation charges.
+  fedex_india_gst:
+    url: https://www.fedex.com/en-in/billing/gst.html
+    issuer: FedEx India
+    title: Goods and Services Tax (GST)
+    inspected: Search-index page excerpt
+    observations:
+      - FedEx India collects GST registration details and GSTIN so invoices carry the correct GST; Indian freight
+        invoices show GST (as CGST, SGST and IGST) alongside transport charges.
+  dhl_french:
+    url: https://www.dhl.com/discover/fr-ma/ship-with-dhl/start-shipping/paying-your-dhl-invoice
+    issuer: DHL Express
+    title: Paiement de votre facture DHL
+    inspected: Full article, plus search excerpt of the French general conditions PDF
+    observations:
+      - French-language billing uses facture / avoir / TVA / echeance vocabulary; MyBill exports CSV for accounting.
+      - The French general conditions provide for a facture rectificative (corrective invoice) when VAT was omitted
+        from the original invoice.
+  factur_x:
+    url: https://www.ferd-net.de/fileadmin/user_upload/FeRD/Downloads/Press_Release_Factur-X_1.07.3_ZUGFeRD_2.3.3.pdf
+    issuer: FeRD
+    title: New Patch-Release of the Franco-German E-Invoice Format Factur-X/ZUGFeRD
+    inspected: Search-index excerpt
+    observations:
+      - Factur-X/ZUGFeRD is a hybrid e-invoice: a PDF/A-3 file with an embedded XML part; the PDF layer is the
+        human-readable representation and the XML the machine-readable one.
+  format_scope_note:
+    observation: grader/extract.py reads only .pdf, .xlsx and .eml attachments; CSV and XML e-invoice attachments
+      are not citable documents, so the harness leaves them unparsed and a hybrid Factur-X invoice is read through
+      its PDF layer.

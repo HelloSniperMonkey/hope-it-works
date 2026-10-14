@@ -2,12 +2,12 @@ From: Velloran Billing <billing@velloran.example>
 To: quentin.abara@brackwater.example
 Subject: Credit note VLA-CN-36-0091
 Date: Mon, 05 May 2036 10:15:00 +0000
-Message-ID: <179190630837.84341.7327088289939854109@velloran.example>
+Message-ID: <179200490755.16371.14413382160360537961@velloran.example>
 X-GCA-Canary: EVAL-NOT-GCA
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============5574995928061477424=="
+Content-Type: multipart/mixed; boundary="===============7980361227399003062=="
 
---===============5574995928061477424==
+--===============7980361227399003062==
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 
@@ -15,7 +15,7 @@ A credit note is attached.
 
 Velloran Billing
 
---===============5574995928061477424==
+--===============7980361227399003062==
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="VLA-CN-36-0091.pdf"
@@ -51,8 +51,8 @@ MDAwMDAwMDQyIDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE3MiAwMDAwMCBu
 IAowMDAwMDAwMjEzIDAwMDAwIG4gCjAwMDAwMDAzNTIgMDAwMDAgbiAKMDAwMDAwMDQ0MSAwMDAw
 MCBuIAowMDAwMDAwNTg1IDAwMDAwIG4gCjAwMDAwMDA3NTQgMDAwMDAgbiAKMDAwMDAwMDg4NiAw
 MDAwMCBuIAowMDAwMDAxMDkyIDAwMDAwIG4gCjAwMDAwMDEyOTAgMDAwMDAgbiAKCnRyYWlsZXIK
-PDwvU2l6ZSAxMi9Sb290IDEgMCBSL0lEWzw3QTExNTJDMjlFMjY1QzI0NDk1NEMyQTlDM0JGMjdD
-Mj48MTI2Mjk2NjZEMjNCNTIyNTI2OTNFODE0RDRFNDI3NTg+XT4+CnN0YXJ0eHJlZgoxNDUxCiUl
+PDwvU2l6ZSAxMi9Sb290IDEgMCBSL0lEWzw0N0MyOTBDMjlCQzNBOTRDNTRDMjg1QzM4RDUxQzI5
+OD48NDBDMTQwOTI1NzEzMTM4OTg0NjI0MTMwOEEyQjk5QUM+XT4+CnN0YXJ0eHJlZgoxNDUxCiUl
 RU9GCg==
 
---===============5574995928061477424==--
+--===============7980361227399003062==--

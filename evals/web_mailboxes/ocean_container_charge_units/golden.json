@@ -1,0 +1,264 @@
+{
+ "3124821dfa89d4baeefffc1b": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Agreement.pdf",
+     "kind": "contract"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "51a3adde2e13c10793a387d5": {
+  "kind": "contract",
+  "facts": {
+   "contract_id": "AF-41",
+   "carrier_party": "CAR-US",
+   "shipper_party": "BUY-US",
+   "currency": "USD",
+   "signed_by_both": true,
+   "effective_date": "2041-01-01",
+   "end_date": "2042-12-31",
+   "auto_renews": false,
+   "rates": [
+    {
+     "lane": "N1-S2",
+     "lo": "0",
+     "hi": null,
+     "is_minimum_charge": false,
+     "period_rates": [
+      {
+       "period": "",
+       "rate": "2.50"
+      }
+     ],
+     "src": "1:4"
+    }
+   ],
+   "fuel": [
+    {
+     "month": "2041-03",
+     "percent": "20",
+     "src": "1:6"
+    }
+   ],
+   "fuel_rule": {
+    "applies_to": [
+     "FRT"
+    ],
+    "src": "1:7"
+   },
+   "accessorials": [
+    {
+     "code": "THC",
+     "name": "Terminal handling",
+     "fee": "300",
+     "unit": "per_container",
+     "only_months": [],
+     "src": "1:16"
+    }
+   ],
+   "charge_codes": [
+    {
+     "code": "FRT",
+     "name": "Linehaul",
+     "aliases": [
+      "Freight",
+      "Transportation",
+      "Weight charge",
+      "Air freight"
+     ],
+     "src": "1:8"
+    },
+    {
+     "code": "FUEL",
+     "name": "Fuel surcharge",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "SEC",
+     "name": "Screening",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DLV",
+     "name": "Delivery",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "STOR",
+     "name": "Bonded storage",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "THC",
+     "name": "Terminal handling",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DUTY",
+     "name": "Import duty",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "TAX",
+     "name": "Tax",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "HAND",
+     "name": "Disbursement fee",
+     "aliases": [],
+     "src": "1:9-10"
+    }
+   ],
+   "authorised_persons": [
+    {
+     "name": "Dana Vale",
+     "party": "CAR-US",
+     "categories": [
+      "billing_disputes"
+     ],
+     "email": "disputes@aurora.example",
+     "src": "1:13"
+    },
+    {
+     "name": "Rene Vale",
+     "party": "CAR-US",
+     "categories": [
+      "rates"
+     ],
+     "email": "rates@aurora.example",
+     "src": "1:14"
+    }
+   ],
+   "clauses": {
+    "pricing_date": {
+     "text_src": "1:5"
+    },
+    "storage": {
+     "free_days": 3,
+     "src": "1:11"
+    },
+    "qualifying_spend": {
+     "include_codes": [
+      "FRT",
+      "FUEL"
+     ],
+     "include_annex_d": true,
+     "src": "1:15"
+    }
+   }
+  },
+  "scan_pages": null
+ },
+ "d2bdc78794224e993868151f": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Ocean.pdf",
+     "kind": "invoice"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "46d21aaa20f3d06b9f327cb5": {
+  "kind": "invoice",
+  "facts": {
+   "invoice_number": "AF-BL",
+   "invoice_date": "2041-03-20",
+   "due_date": "2041-04-19",
+   "contract_id": "AF-41",
+   "currency": "USD",
+   "issuer": "Aurora Freight",
+   "document_type": "invoice",
+   "marked_copy": "no",
+   "total": "700",
+   "subtotal": "700",
+   "taxes": [],
+   "number_src": "1:2-3",
+   "date_src": "1:3-4",
+   "total_src": "1:5-6",
+   "lines": [
+    {
+     "awb": "NSTA000001",
+     "master_awb": null,
+     "date": null,
+     "date_label": null,
+     "lane": "N1-S2",
+     "description": "Terminal handling",
+     "quantity": "1",
+     "rate": null,
+     "amount": "350",
+     "unit": null,
+     "rate_is_percent": false,
+     "percent_base": null,
+     "period": null,
+     "late_fee": null,
+     "src": "1:8"
+    },
+    {
+     "awb": "NSTA000002",
+     "master_awb": null,
+     "date": null,
+     "date_label": null,
+     "lane": "N1-S2",
+     "description": "Terminal handling",
+     "quantity": "1",
+     "rate": null,
+     "amount": "350",
+     "unit": null,
+     "rate_is_percent": false,
+     "percent_base": null,
+     "period": null,
+     "late_fee": null,
+     "src": "1:9"
+    }
+   ]
+  },
+  "scan_pages": null
+ },
+ "0f2f507bef5ff95298b12d9c": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Tracking.xlsx",
+     "kind": "tracking_export"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "74a58599e0c2633247af894b": {
+  "kind": "tracking_export",
+  "facts": {
+   "rows": [
+    {
+     "awb": "NSTA000001",
+     "event": "PICKED_UP",
+     "date": "2041-03-10",
+     "src": "1:2"
+    },
+    {
+     "awb": "NSTA000002",
+     "event": "PICKED_UP",
+     "date": "2041-03-10",
+     "src": "1:3"
+    }
+   ]
+  },
+  "scan_pages": null
+ }
+}

@@ -1,0 +1,14 @@
+name: a June settlement cannot erase the dispute from a May report
+mailbox: evals/mailboxes/layout
+as_of: '2036-05-31'
+mode: supervised
+feedback:
+  batch_01: evals/feedback/fbk_close.json
+expect:
+  key:
+    invoice_id: VLA-36-00417
+    class: overcharge
+  verdict: finding
+  amount_usd: '31.18'
+  action: draft:dispute
+why: The June 1 close decision is unavailable at the May 31 cutoff.

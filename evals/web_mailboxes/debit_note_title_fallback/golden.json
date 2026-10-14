@@ -1,0 +1,249 @@
+{
+ "3124821dfa89d4baeefffc1b": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Agreement.pdf",
+     "kind": "contract"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "7dc3013891d6e78ceb0d1939": {
+  "kind": "contract",
+  "facts": {
+   "contract_id": "AF-41",
+   "carrier_party": "CAR-US",
+   "shipper_party": "BUY-US",
+   "currency": "USD",
+   "signed_by_both": true,
+   "effective_date": "2041-01-01",
+   "end_date": "2042-12-31",
+   "auto_renews": false,
+   "rates": [
+    {
+     "lane": "N1-S2",
+     "lo": "0",
+     "hi": null,
+     "is_minimum_charge": false,
+     "period_rates": [
+      {
+       "period": "",
+       "rate": "2.50"
+      }
+     ],
+     "src": "1:4"
+    }
+   ],
+   "fuel": [
+    {
+     "month": "2041-03",
+     "percent": "20",
+     "src": "1:6"
+    }
+   ],
+   "fuel_rule": {
+    "applies_to": [
+     "FRT"
+    ],
+    "src": "1:7"
+   },
+   "accessorials": [],
+   "charge_codes": [
+    {
+     "code": "FRT",
+     "name": "Linehaul",
+     "aliases": [
+      "Freight",
+      "Transportation",
+      "Weight charge",
+      "Air freight"
+     ],
+     "src": "1:8"
+    },
+    {
+     "code": "FUEL",
+     "name": "Fuel surcharge",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "SEC",
+     "name": "Screening",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DLV",
+     "name": "Delivery",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "STOR",
+     "name": "Bonded storage",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "THC",
+     "name": "Terminal handling",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DUTY",
+     "name": "Import duty",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "TAX",
+     "name": "Tax",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "HAND",
+     "name": "Disbursement fee",
+     "aliases": [],
+     "src": "1:9-10"
+    }
+   ],
+   "authorised_persons": [
+    {
+     "name": "Dana Vale",
+     "party": "CAR-US",
+     "categories": [
+      "billing_disputes"
+     ],
+     "email": "disputes@aurora.example",
+     "src": "1:13"
+    },
+    {
+     "name": "Rene Vale",
+     "party": "CAR-US",
+     "categories": [
+      "rates"
+     ],
+     "email": "rates@aurora.example",
+     "src": "1:14"
+    }
+   ],
+   "clauses": {
+    "pricing_date": {
+     "text_src": "1:5"
+    },
+    "storage": {
+     "free_days": 3,
+     "src": "1:11"
+    },
+    "qualifying_spend": {
+     "include_codes": [
+      "FRT",
+      "FUEL"
+     ],
+     "include_annex_d": true,
+     "src": "1:15"
+    }
+   }
+  },
+  "scan_pages": null
+ },
+ "ca5514fdec26150834608234": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "DebitNote.pdf",
+     "kind": "other"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "afa757cbc2bd2b9e28acbd7d": {
+  "kind": "invoice",
+  "facts": {
+   "invoice_number": "AF-DEBIT",
+   "invoice_date": "2041-03-20",
+   "due_date": "2041-04-19",
+   "contract_id": "AF-41",
+   "currency": "USD",
+   "issuer": "Aurora Freight",
+   "document_type": "invoice",
+   "marked_copy": "no",
+   "total": "336",
+   "subtotal": "336",
+   "taxes": [],
+   "number_src": "1:2-3",
+   "date_src": "1:3-4",
+   "total_src": "1:5-6",
+   "lines": [
+    {
+     "awb": "AF-100",
+     "master_awb": null,
+     "date": null,
+     "date_label": null,
+     "lane": "N1-S2",
+     "description": "Transportation",
+     "quantity": "100",
+     "rate": null,
+     "amount": "280",
+     "unit": null,
+     "rate_is_percent": false,
+     "percent_base": null,
+     "period": null,
+     "late_fee": null,
+     "src": "1:7"
+    },
+    {
+     "awb": "AF-100",
+     "master_awb": null,
+     "date": null,
+     "date_label": null,
+     "lane": "N1-S2",
+     "description": "Fuel surcharge",
+     "quantity": null,
+     "rate": null,
+     "amount": "56",
+     "unit": null,
+     "rate_is_percent": false,
+     "percent_base": null,
+     "period": null,
+     "late_fee": null,
+     "src": "1:8"
+    }
+   ]
+  },
+  "scan_pages": null
+ },
+ "0f2f507bef5ff95298b12d9c": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Tracking.xlsx",
+     "kind": "tracking_export"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "6757fdc6930bbee99908c690": {
+  "kind": "tracking_export",
+  "facts": {
+   "rows": [
+    {
+     "awb": "AF-100",
+     "event": "PICKED_UP",
+     "date": "2041-03-10",
+     "src": "1:2"
+    }
+   ]
+  },
+  "scan_pages": null
+ }
+}

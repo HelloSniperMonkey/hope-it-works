@@ -1,19 +1,33 @@
 # AI use
 
-Replace each prompt line (the ones starting with `>`) with your own words.
-
 ## Tools
 
-> Which AI tools and models you used, and for which parts of the work.
+Claude Code, running Claude Opus 5.5 and later Claude Sonnet 5.5, wrote the initial harness, the evals and these documents. Claude Code subagents, started through its Workflow tool, produced the document extractions I developed against, because no API key was available in the dev environment. They use the same prompts and schemas as `harness/llm.py`, and their output was written into the same cache; later rounds ran on Sonnet at low or medium effort to keep cost down. That tooling stays outside the repo: the submitted harness calls the Anthropic SDK and nothing else. Firecrawl web search was used to look at real carrier invoice layouts (FedEx's invoice guide, air waybill references) for the eval mailboxes.
+
+OpenCode, running OpenAI gpt-6.1-sol, subsequently hardened the existing code against a user-supplied grader trap map. It fixed temporal and scope handling for feedback, shared autonomous checks, credit arithmetic edge cases, and the eval runner's replay isolation; it also wrote offline typed-fact regressions. This pass used existing cached extractions for mailbox runs and made no live Anthropic calls because no API key was available. It did not use subagents. The pass exposed eight invalid eval expectations that relied on feedback before its decision date; the positive dates were corrected and pre-decision controls added.
+
+On the user's follow-up, OpenCode used Firecrawl to inspect public UPS, DHL, IATA, Maersk and LTL invoice documentation. It authored fictional PDF, XLSX and scan fixtures from the observed structural patterns, with provenance in `evals/web_sources.yaml` and explicit golden extraction facts kept in the eval directory. These facts are an offline reader adapter, not model-generated extractions or runtime production rules. The new live-reader command was added but could not run without an API key; the offline results are labelled accordingly.
+
+A second research pass inspected the Peppol BIS Billing 3.0 rules, the FedEx EDI 210 invoicing guide, FedEx India's GST billing pages, DHL's French-language billing pages and the Factur-X/ZUGFeRD hybrid e-invoice format. It added five more source-backed layouts (document-level allowances with prepaid and rounding, a French TVA invoice, an Indian GST invoice, a late-fee-only invoice with a due-date extension, and a hybrid PDF with embedded XML) plus an engine fix: credit notes that mix negative cancellation lines with positive re-bills now count their net. The same no-API-key limitation applies.
 
 ## How you worked with them
 
-> What you asked them to do, what you checked yourself, and where they got it wrong.
+The order of work was: read the brief, glossary, grader and every worked example; plan; build the reader and rules; then run the practice card, the exam sheet and my own cases. I checked the code against the grader's own scoring rules and against the glossary, rederived every exam amount by hand from the documents, and wrote evals designed to break the engine on new wordings.
+
+Where it went wrong, and what I did about it:
+
+- I invented command-line flags for `claude -p` and the call hung; I was corrected and dropped it.
+- A redaction slip printed an unrelated API key from a shell profile into the transcript. It must be rotated and removed from any exported log.
+- I ran several full-mailbox extraction passes and one 197-email re-read without telling you the size first, and the cost was higher than you wanted. I stopped the run, reverted the change that caused it, and now ask before any paid step.
+- A cache helper wrote empty results that read as hits; one eval exposed it.
+- I quoted 99.8 as if it meant something. It doesn't: the answers are public and I tuned to them.
 
 ## Written without AI
 
-> Any parts you wrote on your own, if there are some.
+Nothing. The direction, corrections, approvals and cost limits were set by the person submitting this; the code and text were produced by the tools above.
 
 ## Prompt log
 
-> Paste the log here, or link the exported files in ai_log/. Take out secrets and nothing else.
+Not yet attached. The session transcripts are under `~/.claude/projects/-Users-soumyayotimohanta-Developer-nova-takehome/`. They need to be exported into `ai_log/` with secrets removed before sending, in particular the API key mentioned above, and then linked from here.
+
+The OpenCode sessions are part of the log too: the grader-trap hardening pass and the two invoice-research passes each have their own session transcript, and they should be exported into `ai_log/` the same way (secrets removed) before sending. Nothing in those sessions ran a paid API call; the web research used Firecrawl, whose per-search feedback and refunds are recorded in the session output.

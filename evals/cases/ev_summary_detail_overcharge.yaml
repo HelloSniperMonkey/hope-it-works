@@ -1,0 +1,12 @@
+name: summary page then detail blocks; period B rate on a period A waybill
+mailbox: evals/mailboxes/summary_detail
+as_of: '2036-03-31'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-02001
+    class: overcharge
+  verdict: finding
+  amount_usd: '31.18'
+  action: draft:dispute
+why: priced from the detail block on page 2; dates are day-first (issued 18/02)

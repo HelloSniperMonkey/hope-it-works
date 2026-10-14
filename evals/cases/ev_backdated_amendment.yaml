@@ -2,6 +2,11 @@ name: a backdated amendment turns a correct bill into an overcharge
 mailbox: evals/mailboxes/backdated
 as_of: '2036-06-30'
 mode: supervised
+by_batch:
+  - after_batch: batch_01
+    as_of: '2036-05-31'
+    expect:
+      verdict: no_finding
 expect:
   key:
     invoice_id: VLA-36-01207
@@ -9,4 +14,7 @@ expect:
   verdict: finding
   amount_usd: '94.50'
   action: draft:dispute
+  retro: true
+  evidence_docs:
+    - batch_02/0001.eml#VLA-US-AIR-07-A2.pdf
 why: 'priced on the collection date: the amendment was in force then, though it arrived later (retro)'

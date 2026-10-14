@@ -1,0 +1,241 @@
+{
+ "3124821dfa89d4baeefffc1b": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Agreement.pdf",
+     "kind": "contract"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "8e7d5cfd6b46ac0f33d0528d": {
+  "kind": "contract",
+  "facts": {
+   "contract_id": "AF-41",
+   "carrier_party": "CAR-US",
+   "shipper_party": "BUY-US",
+   "currency": "USD",
+   "signed_by_both": true,
+   "effective_date": "2041-01-01",
+   "end_date": "2042-12-31",
+   "auto_renews": false,
+   "rates": [
+    {
+     "lane": "N1-S2",
+     "lo": "0",
+     "hi": null,
+     "is_minimum_charge": false,
+     "period_rates": [
+      {
+       "period": "",
+       "rate": "2.50"
+      }
+     ],
+     "src": "1:4"
+    }
+   ],
+   "fuel": [
+    {
+     "month": "2041-03",
+     "percent": "20",
+     "src": "1:6"
+    }
+   ],
+   "fuel_rule": {
+    "applies_to": [
+     "FRT"
+    ],
+    "src": "1:7"
+   },
+   "accessorials": [
+    {
+     "code": "SEC",
+     "name": "Screening",
+     "fee": "3",
+     "unit": "per_piece",
+     "only_months": [],
+     "src": "1:16"
+    }
+   ],
+   "charge_codes": [
+    {
+     "code": "FRT",
+     "name": "Linehaul",
+     "aliases": [
+      "Freight",
+      "Transportation",
+      "Weight charge",
+      "Air freight"
+     ],
+     "src": "1:8"
+    },
+    {
+     "code": "FUEL",
+     "name": "Fuel surcharge",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "SEC",
+     "name": "Screening",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DLV",
+     "name": "Delivery",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "STOR",
+     "name": "Bonded storage",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "THC",
+     "name": "Terminal handling",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "DUTY",
+     "name": "Import duty",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "TAX",
+     "name": "Tax",
+     "aliases": [],
+     "src": "1:9-10"
+    },
+    {
+     "code": "HAND",
+     "name": "Disbursement fee",
+     "aliases": [],
+     "src": "1:9-10"
+    }
+   ],
+   "authorised_persons": [
+    {
+     "name": "Dana Vale",
+     "party": "CAR-US",
+     "categories": [
+      "billing_disputes"
+     ],
+     "email": "disputes@aurora.example",
+     "src": "1:13"
+    },
+    {
+     "name": "Rene Vale",
+     "party": "CAR-US",
+     "categories": [
+      "rates"
+     ],
+     "email": "rates@aurora.example",
+     "src": "1:14"
+    }
+   ],
+   "clauses": {
+    "pricing_date": {
+     "text_src": "1:5"
+    },
+    "storage": {
+     "free_days": 3,
+     "src": "1:11"
+    },
+    "qualifying_spend": {
+     "include_codes": [
+      "FRT",
+      "FUEL"
+     ],
+     "include_annex_d": true,
+     "src": "1:15"
+    }
+   }
+  },
+  "scan_pages": null
+ },
+ "25a507d6c3b95832fe1b9c6e": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Screening.pdf",
+     "kind": "invoice"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "58a093cd5f04157e21b51d50": {
+  "kind": "invoice",
+  "facts": {
+   "invoice_number": "AF-PIECES",
+   "invoice_date": "2041-03-20",
+   "due_date": "2041-04-19",
+   "contract_id": "AF-41",
+   "currency": "USD",
+   "issuer": "Aurora Freight",
+   "document_type": "invoice",
+   "marked_copy": "no",
+   "total": "16",
+   "subtotal": "16",
+   "taxes": [],
+   "number_src": "1:2-3",
+   "date_src": "1:3-4",
+   "total_src": "1:5-6",
+   "lines": [
+    {
+     "awb": "AF-100",
+     "master_awb": null,
+     "date": null,
+     "date_label": null,
+     "lane": "N1-S2",
+     "description": "Screening",
+     "quantity": "4",
+     "rate": "4",
+     "amount": "16",
+     "unit": "pieces",
+     "rate_is_percent": false,
+     "percent_base": null,
+     "period": null,
+     "late_fee": null,
+     "src": "1:7"
+    }
+   ]
+  },
+  "scan_pages": null
+ },
+ "0f2f507bef5ff95298b12d9c": {
+  "kind": "email",
+  "facts": {
+   "attachment_kinds": [
+    {
+     "name": "Tracking.xlsx",
+     "kind": "tracking_export"
+    }
+   ],
+   "requests_payment": "yes"
+  }
+ },
+ "6757fdc6930bbee99908c690": {
+  "kind": "tracking_export",
+  "facts": {
+   "rows": [
+    {
+     "awb": "AF-100",
+     "event": "PICKED_UP",
+     "date": "2041-03-10",
+     "src": "1:2"
+    }
+   ]
+  },
+  "scan_pages": null
+ }
+}

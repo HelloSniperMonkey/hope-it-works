@@ -1,0 +1,399 @@
+{
+ "reader": "authored golden facts",
+ "passed": 56,
+ "total": 56,
+ "cases": [
+  {
+   "case": "parcel_net_columns",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "parcel_net_columns",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "remittance_and_prior_balance",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "remittance_and_prior_balance",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "shipping_correction_delta",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "shipping_correction_delta",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "piece_weight_vs_billed_weight",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "piece_weight_vs_billed_weight",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "customs_values_not_freight",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "customs_values_not_freight",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "credit_adjustment_rebill",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "credit_adjustment_rebill",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ltl_pro_cwt",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ltl_pro_cwt",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ocean_container_charge_units",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ocean_container_charge_units",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "monetary_fuel_per_lb",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "monetary_fuel_per_lb",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "contract_defined_fuel_base",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "contract_defined_fuel_base",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "prepaid_collect_allocation",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "prepaid_collect_allocation",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "wide_reordered_spreadsheet",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "wide_reordered_spreadsheet",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "scanned_charge_summary",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "scanned_charge_summary",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "commercial_invoice_decoy",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "commercial_invoice_decoy",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "proforma_decoy",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "proforma_decoy",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "multi_page_summary_detail",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "multi_page_summary_detail",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "screening_per_piece",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "screening_per_piece",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ltl_deficit_weight_decoy",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "ltl_deficit_weight_decoy",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "air_waybill_with_charge_boxes",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "air_waybill_with_charge_boxes",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "injected_remittance_footer",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "injected_remittance_footer",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "invoice_with_waybill_reference",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "invoice_with_waybill_reference",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "debit_note_title_fallback",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "debit_note_title_fallback",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "retransmitted_partial_credit",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "retransmitted_partial_credit",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "doc_level_allowance_peppol",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "doc_level_allowance_peppol",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "french_layout",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "french_layout",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "gst_split_tax",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "gst_split_tax",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "late_fee_only_invoice",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "late_fee_only_invoice",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "hybrid_pdf_xml",
+   "mode": "supervised",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  },
+  {
+   "case": "hybrid_pdf_xml",
+   "mode": "autonomous",
+   "pass": true,
+   "diff": [],
+   "reports_checked": 1
+  }
+ ]
+}

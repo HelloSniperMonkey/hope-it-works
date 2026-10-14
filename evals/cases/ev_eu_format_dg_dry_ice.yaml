@@ -1,0 +1,12 @@
+name: European number and date format; DG fee billed on a dry-ice-only shipment
+mailbox: evals/mailboxes/eu_format
+as_of: '2036-05-15'
+mode: supervised
+expect:
+  key:
+    invoice_id: VLA-36-03003
+    class: overcharge
+  verdict: finding
+  amount_usd: '260.00'
+  action: draft:dispute
+why: '1.234,56 is one thousand two hundred; clause 3.7: coolant dry ice attracts no DG fee'
