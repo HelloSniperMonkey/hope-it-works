@@ -15,6 +15,14 @@ make validate
 
 Nothing beyond `harness/requirements.txt` is needed, and nothing but `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL`: the harness calls the Anthropic Python SDK (`anthropic==1.8.0`, as shipped) directly; no Claude Code, no `claude` CLI. `ingest` reads each email as its own pipeline (the email, then its attachments in parallel, 12 at a time) and saves it as soon as it is done, so a step cut short keeps what it finished. Each document is one streamed call to `claude-opus-5-5` with structured output; results are cached by content hash in `.cache/llm`, or in the state dir when the code folder is read-only. If the endpoint refuses the server-side fallback beta or the output schema, whatever its error text, the harness drops that feature and checks the JSON against the schema itself. A scan goes to the vision model, with local OCR (`rapidocr`) when that call fails. `make grade` on a cold cache is about 160 calls per mode. `NOVA_NO_CACHE=1` forces live calls (dev only).
 
+## Before you run it
+
+- A key is needed only for `make grade` and `make sheet`. `make eval`, `make test`, `make eval-web` and `make validate` run entirely offline against cached extractions and authored facts, so you can verify the rules without one. Python 3.11 or newer.
+- The harness talks only to `api.anthropic.com`. Expect roughly $40 to $60 per 1,000 documents at list prices ($4 / $20 per million tokens); contracts dominate. The grader gives each step 600 seconds; a cold-cache practice replay is about 160 calls per mode.
+- `.cache/llm/` is a dev-only cache of extractions from the mailbox data. It is gitignored on purpose; never ship it, and `NOVA_NO_CACHE=1` bypasses it.
+- For a first sanity check: a healthy run scores 99.8/100 on practice in both modes with every hard gate clear, and the exam sheet totals $8,165.33 (1 conflict, 1 cannot_determine). `make eval-web LIVE=1` is the only command that reads the new-layout corpus with the real model; everything else is offline by design.
+- If a document can't be read, ingest exits nonzero and says which one — a clean-looking report is never hiding an unreadable document (the report's `diagnostics` block lists what was parsed).
+
 How that path was checked without a key here: a local stand-in for the Messages endpoint, run with only the two environment variables, on a read-only copy of `harness/`. All 41 practice and 41 exam emails went through ingest, report and feedback with nothing unreadable, and so did gateways that reject the fallback beta, reject the schema, or answer with an uninformative 400. It proves the plumbing (request shape, streaming, schema checks, fallbacks, scans, caching), not what a real model reads.
 
 ## What works
